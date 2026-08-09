@@ -56,6 +56,7 @@ export default function TrackScreen() {
   const [crew, setCrew] = useState<TripCrew | null>(null);
   const [notifyNear, setNotifyNear] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [sheetHeight, setSheetHeight] = useState(0);
   const [passengerPosition, setPassengerPosition] =
     useState<BusPosition | null>(null);
   const notifiedRef = useRef(false);
@@ -269,6 +270,7 @@ export default function TrackScreen() {
         boardingStopId={stopId ?? ""}
         position={position}
         passengerPosition={passengerPosition}
+        bottomInset={sheetHeight}
       />
 
       {/* Top bar over the map */}
@@ -295,7 +297,11 @@ export default function TrackScreen() {
       </SafeAreaView>
 
       {/* Bottom sheet */}
-      <View style={styles.sheetWrap} pointerEvents="box-none">
+      <View
+        style={styles.sheetWrap}
+        pointerEvents="box-none"
+        onLayout={(e) => setSheetHeight(e.nativeEvent.layout.height)}
+      >
         <SafeAreaView
           edges={["bottom"]}
           style={[styles.sheet, { backgroundColor: theme.backgroundElement }]}

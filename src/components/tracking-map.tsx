@@ -154,11 +154,16 @@ export function TrackingMap({
   boardingStopId,
   position,
   passengerPosition,
+  bottomInset = 0,
 }: {
   route: TripRoute;
   boardingStopId: string;
   position: BusPosition | null;
   passengerPosition?: BusPosition | null;
+  /** Height of any overlay (e.g. the bottom sheet) covering the map's
+   *  bottom edge, so the recenter/zoom controls sit above it instead of
+   *  underneath. */
+  bottomInset?: number;
 }) {
   const mapRef = useRef<MapView>(null);
   const [userMoved, setUserMoved] = useState(false);
@@ -279,7 +284,10 @@ export function TrackingMap({
       mapRef.current?.animateCamera(
         {
           center: { latitude: position.lat, longitude: position.lng },
+          // Apple Maps ignores `zoom` (it's altitude-driven); Google Maps
+          // ignores `altitude` — set both so either provider zooms in.
           zoom: 15,
+          altitude: 1500,
         },
         { duration: 700 },
       );
@@ -291,10 +299,20 @@ export function TrackingMap({
   async function zoomBy(delta: number) {
     const camera = await mapRef.current?.getCamera();
     if (!camera) return;
-    mapRef.current?.animateCamera(
-      { ...camera, zoom: (camera.zoom ?? 12) + delta },
-      { duration: 250 },
-    );
+    if (Platform.OS === "ios") {
+      // Apple Maps' camera has no `zoom` — it's altitude-driven (meters
+      // above the ground); halving/doubling it approximates one zoom step.
+      const factor = delta > 0 ? 0.5 : 2;
+      mapRef.current?.animateCamera(
+        { ...camera, altitude: (camera.altitude ?? 8000) * factor },
+        { duration: 250 },
+      );
+    } else {
+      mapRef.current?.animateCamera(
+        { ...camera, zoom: (camera.zoom ?? 12) + delta },
+        { duration: 250 },
+      );
+    }
   }
 
   function onRegionChangeComplete(region: Region) {
@@ -419,7 +437,7 @@ export function TrackingMap({
         )}
       </MapView>
 
-      <View style={styles.controls}>
+      <View style={[styles.controls, { bottom: 16 + bottomInset }]}>
         {userMoved && (
           <Pressable
             style={styles.controlButton}
@@ -504,7 +522,6 @@ const styles = StyleSheet.create({
   controls: {
     position: "absolute",
     right: 16,
-    bottom: 16,
     gap: 10,
   },
   controlButton: {
