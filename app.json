@@ -13,7 +13,8 @@
       "appleTeamId": "B9Z73W94NU",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSLocationWhenInUseUsageDescription": "BusConnect shows your position on the map while tracking a bus."
+        "NSLocationWhenInUseUsageDescription": "BusConnect shows your position on the map while tracking a bus.",
+        "NSMotionUsageDescription": "BusConnect uses motion data to improve the accuracy of your location while tracking a bus."
       }
     },
     "android": {
