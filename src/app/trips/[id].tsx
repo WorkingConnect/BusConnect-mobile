@@ -352,6 +352,8 @@ export default function TripDetailScreen() {
           <LegendItem color={SEAT_COLOR.blocked} label="Unavailable" />
         </View>
 
+        <Text style={styles.frontLabel}>FRONT OF BUS</Text>
+
         <View style={[styles.seatCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
           {grid.map((row, r) => (
             <View key={r} style={styles.seatRow}>
@@ -541,6 +543,14 @@ const styles = StyleSheet.create({
   crewPhoto: { width: 36, height: 36, borderRadius: 18 },
   crewPhotoFallback: { alignItems: "center", justifyContent: "center", borderWidth: 1 },
   legend: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.three, marginTop: Spacing.three, marginBottom: Spacing.three },
+  frontLabel: {
+    textAlign: "center",
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+    color: "#9ca3af",
+    marginBottom: Spacing.two,
+  },
   legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
   legendSwatch: { width: 12, height: 12, borderRadius: 4, borderWidth: 1 },
   seatCard: { borderWidth: 1, borderRadius: 16, padding: Spacing.three, alignItems: "center", gap: Spacing.two },
