@@ -30,10 +30,6 @@ import {
 } from "@/lib/api";
 import { Spacing } from "@/constants/theme";
 
-// Mirrors CONVENIENCE_FEE_PCT in mpgs.service.ts (card) and
-// 0055_wallet_convenience_fee.sql (wallet) — both charging paths add it.
-const CONVENIENCE_FEE_PCT = 0.02;
-
 function formatLkr(amount: number) {
   return `LKR ${amount.toLocaleString("en-LK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
@@ -107,6 +103,10 @@ export default function CheckoutScreen() {
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const amount = booking?.amount ?? null;
   const expiresAt = booking?.holds?.[0]?.expires_at ?? null;
+  // The operator's own rate — every operator has one (default 2%), server-
+  // computed the same way on both charging paths (mpgs.service.ts,
+  // pay_booking_from_wallet()). Falls back to 2 only if it's ever missing.
+  const convenienceFeePct = booking?.trip?.bus?.operator?.convenience_fee_pct ?? 2;
 
   // The seat hold behind this booking runs out ~8 minutes after the seats
   // were first selected on the seat map (create_booking() links the same
@@ -389,10 +389,10 @@ export default function CheckoutScreen() {
               </View>
               <View style={styles.summaryRow}>
                 <Text style={{ color: theme.textSecondary, fontSize: 14 }}>
-                  Convenience fee (2%)
+                  Convenience fee ({convenienceFeePct}%)
                 </Text>
                 <Text style={{ color: theme.text, fontSize: 14 }}>
-                  {formatLkr(booking.amount * CONVENIENCE_FEE_PCT)}
+                  {formatLkr(booking.amount * (convenienceFeePct / 100))}
                 </Text>
               </View>
 
@@ -403,7 +403,7 @@ export default function CheckoutScreen() {
                   Amount due
                 </Text>
                 <Text style={{ color: theme.brand, fontWeight: "800", fontSize: 16 }}>
-                  {formatLkr(booking.amount * (1 + CONVENIENCE_FEE_PCT))}
+                  {formatLkr(booking.amount * (1 + convenienceFeePct / 100))}
                 </Text>
               </View>
             </View>
@@ -522,7 +522,7 @@ export default function CheckoutScreen() {
   }
 
   if (stage === "wallet-confirm" && booking) {
-    const totalWithFee = booking.amount * (1 + CONVENIENCE_FEE_PCT);
+    const totalWithFee = booking.amount * (1 + convenienceFeePct / 100);
     const insufficientWallet = wallet !== null && wallet.balance < totalWithFee;
     return (
       <View style={{ flex: 1, backgroundColor: theme.background }}>

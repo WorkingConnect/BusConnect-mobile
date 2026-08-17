@@ -184,7 +184,7 @@ export interface Booking {
     depart_at: string;
     bus?: {
       reg_no?: string | null;
-      operator?: { name: string; logo_url?: string | null } | null;
+      operator?: { name: string; logo_url?: string | null; convenience_fee_pct?: number } | null;
     } | null;
   };
   from_stop?: { location?: { name_en: string } | null } | null;
