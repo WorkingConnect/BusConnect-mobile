@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -22,6 +23,7 @@ import {
   getWallet,
   payBookingFromWallet,
   ApiError,
+  type Booking,
   type MpgsCheckoutSession,
   type Wallet,
 } from "@/lib/api";
@@ -29,6 +31,15 @@ import { Spacing } from "@/constants/theme";
 
 function formatLkr(amount: number) {
   return `LKR ${amount.toLocaleString("en-LK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function formatDateTime(iso: string) {
+  return new Date(iso).toLocaleString("en-LK", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 /**
@@ -79,17 +90,18 @@ function checkoutHtml(checkout: MpgsCheckoutSession) {
   </body></html>`;
 }
 
-type Stage = "loading" | "choose" | "card" | "wallet-paying";
+type Stage = "loading" | "choose" | "wallet-confirm" | "wallet-paying" | "card";
 
 export default function CheckoutScreen() {
   const theme = useTheme();
   const { session } = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [stage, setStage] = useState<Stage>("loading");
-  const [amount, setAmount] = useState<number | null>(null);
+  const [booking, setBooking] = useState<Booking | null>(null);
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [checkout, setCheckout] = useState<MpgsCheckoutSession | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const amount = booking?.amount ?? null;
 
   useEffect(() => {
     if (!id || !session) return;
@@ -97,8 +109,8 @@ export default function CheckoutScreen() {
       getBooking(session.access_token, id),
       getWallet(session.access_token),
     ])
-      .then(([booking, w]) => {
-        setAmount(booking.amount);
+      .then(([b, w]) => {
+        setBooking(b);
         setWallet(w);
         setStage("choose");
       })
@@ -121,7 +133,14 @@ export default function CheckoutScreen() {
       );
   }
 
-  function payWithWallet() {
+  // "Pay from wallet" no longer pays immediately — it opens a confirmation
+  // step (wallet balance + booking details) with an explicit pay action.
+  function reviewWalletPayment() {
+    setError(null);
+    setStage("wallet-confirm");
+  }
+
+  function confirmWalletPayment() {
     if (!id || !session) return;
     setStage("wallet-paying");
     payBookingFromWallet(session.access_token, id)
@@ -132,7 +151,7 @@ export default function CheckoutScreen() {
         setError(
           e instanceof ApiError ? e.message : "Could not pay from wallet.",
         );
-        setStage("choose");
+        setStage("wallet-confirm");
       });
   }
 
@@ -177,7 +196,7 @@ export default function CheckoutScreen() {
     </SafeAreaView>
   );
 
-  if (error && stage !== "choose") {
+  if (error && stage !== "choose" && stage !== "wallet-confirm") {
     return (
       <View style={{ flex: 1, backgroundColor: theme.background }}>
         {hero}
@@ -239,7 +258,7 @@ export default function CheckoutScreen() {
           )}
 
           <Pressable
-            onPress={payWithWallet}
+            onPress={reviewWalletPayment}
             disabled={insufficientWallet}
             style={[
               styles.methodButton,
@@ -292,14 +311,113 @@ export default function CheckoutScreen() {
                   marginTop: 2,
                 }}
               >
-                Secure checkout via MPGS
+                Secure checkout
               </Text>
             </View>
+            <Image
+              source={require("../../../assets/images/payment.jpeg")}
+              style={styles.cardLogos}
+              resizeMode="contain"
+            />
             <Ionicons
               name="chevron-forward"
               size={18}
               color={theme.textSecondary}
             />
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
+  if (stage === "wallet-confirm" && booking) {
+    const insufficientWallet = wallet !== null && wallet.balance < booking.amount;
+    return (
+      <View style={{ flex: 1, backgroundColor: theme.background }}>
+        {hero}
+        <View style={styles.chooseContainer}>
+          <View
+            style={[
+              styles.summaryCard,
+              { backgroundColor: theme.backgroundElement, borderColor: theme.border },
+            ]}
+          >
+            <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>
+              Wallet balance
+            </Text>
+            <Text style={[styles.summaryValue, { color: theme.text }]}>
+              {formatLkr(wallet?.balance ?? 0)}
+            </Text>
+
+            <View style={[styles.dashedDivider, { borderColor: theme.border }]} />
+
+            {booking.trip?.bus?.operator?.name && (
+              <View style={styles.summaryRow}>
+                <Text style={{ color: theme.textSecondary }}>Operator</Text>
+                <Text style={{ color: theme.text, fontWeight: "600" }}>
+                  {booking.trip.bus.operator.name}
+                </Text>
+              </View>
+            )}
+            {booking.from_stop?.location?.name_en && (
+              <View style={styles.summaryRow}>
+                <Text style={{ color: theme.textSecondary }}>Pickup point</Text>
+                <Text style={{ color: theme.text, fontWeight: "600" }}>
+                  {booking.from_stop.location.name_en}
+                </Text>
+              </View>
+            )}
+            <View style={styles.summaryRow}>
+              <Text style={{ color: theme.textSecondary }}>Seats</Text>
+              <Text style={{ color: theme.text, fontWeight: "700" }}>
+                {booking.seats.join(", ")}
+              </Text>
+            </View>
+            {booking.trip?.depart_at && (
+              <View style={styles.summaryRow}>
+                <Text style={{ color: theme.textSecondary }}>Departs</Text>
+                <Text style={{ color: theme.text, fontWeight: "600" }}>
+                  {formatDateTime(booking.trip.depart_at)}
+                </Text>
+              </View>
+            )}
+            <View style={styles.summaryRow}>
+              <Text style={{ color: theme.textSecondary }}>Reference</Text>
+              <Text style={{ color: theme.text }}>
+                {booking.id.slice(0, 8).toUpperCase()}
+              </Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={{ color: theme.textSecondary }}>Amount to pay</Text>
+              <Text style={{ color: theme.brand, fontWeight: "800" }}>
+                {formatLkr(booking.amount)}
+              </Text>
+            </View>
+          </View>
+
+          {error && (
+            <Text style={{ color: "#dc2626", fontSize: 13, marginTop: Spacing.three }}>
+              {error}
+            </Text>
+          )}
+
+          <Pressable
+            onPress={confirmWalletPayment}
+            disabled={insufficientWallet}
+            style={[
+              styles.payButton,
+              { backgroundColor: theme.brand, opacity: insufficientWallet ? 0.5 : 1 },
+            ]}
+          >
+            <Text style={styles.payButtonLabel}>
+              {insufficientWallet ? "Insufficient balance" : `Pay ${formatLkr(booking.amount)}`}
+            </Text>
+          </Pressable>
+
+          <Pressable onPress={() => setStage("choose")} style={styles.backLink}>
+            <Text style={{ color: theme.textSecondary, fontWeight: "600" }}>
+              Choose a different payment method
+            </Text>
           </Pressable>
         </View>
       </View>
@@ -404,4 +522,26 @@ const styles = StyleSheet.create({
     padding: Spacing.four,
     marginBottom: Spacing.three,
   },
+  cardLogos: { width: 64, height: 22 },
+  summaryCard: {
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: Spacing.four,
+    marginBottom: Spacing.four,
+  },
+  summaryLabel: { fontSize: 12 },
+  summaryValue: { fontSize: 26, fontWeight: "800", marginTop: 2 },
+  dashedDivider: {
+    borderTopWidth: 1,
+    borderStyle: "dashed",
+    marginVertical: Spacing.three,
+  },
+  summaryRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 6 },
+  payButton: {
+    alignItems: "center",
+    borderRadius: 14,
+    paddingVertical: Spacing.four,
+  },
+  payButtonLabel: { color: "#fff", fontWeight: "800", fontSize: 16 },
+  backLink: { alignItems: "center", paddingVertical: Spacing.three, marginTop: Spacing.two },
 });
