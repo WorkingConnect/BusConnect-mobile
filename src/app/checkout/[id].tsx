@@ -19,6 +19,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { useAuth } from "@/lib/auth";
 import {
   checkoutBooking,
+  cancelBooking,
   getBooking,
   getWallet,
   payBookingFromWallet,
@@ -29,18 +30,20 @@ import {
 } from "@/lib/api";
 import { Spacing } from "@/constants/theme";
 
+// Mirrors CONVENIENCE_FEE_PCT in mpgs.service.ts (card) and
+// 0055_wallet_convenience_fee.sql (wallet) — both charging paths add it.
+const CONVENIENCE_FEE_PCT = 0.02;
+
 function formatLkr(amount: number) {
   return `LKR ${amount.toLocaleString("en-LK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-function formatDateTime(iso: string) {
-  return new Date(iso).toLocaleString("en-LK", {
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+function formatCountdown(totalSeconds: number) {
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
 }
+
 
 /**
  * A minimal HTML shell that loads MPGS's hosted-checkout SDK and hands it
@@ -101,7 +104,42 @@ export default function CheckoutScreen() {
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [checkout, setCheckout] = useState<MpgsCheckoutSession | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const amount = booking?.amount ?? null;
+  const expiresAt = booking?.holds?.[0]?.expires_at ?? null;
+
+  // The seat hold behind this booking runs out ~8 minutes after the seats
+  // were first selected on the seat map (create_booking() links the same
+  // seat_holds rows, it doesn't reset their TTL) — count it down here so the
+  // payer knows the seats can be given back to someone else.
+  useEffect(() => {
+    if (!expiresAt) {
+      setSecondsLeft(null);
+      return;
+    }
+    function tick() {
+      const remaining = Math.max(
+        0,
+        Math.round((new Date(expiresAt as string).getTime() - Date.now()) / 1000),
+      );
+      setSecondsLeft(remaining);
+    }
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [expiresAt]);
+
+  // Backing out of checkout to the seat map should give the seats back
+  // immediately rather than making everyone else wait out the full TTL.
+  function goBack() {
+    if (id && session && booking?.status === "pending") {
+      void cancelBooking(session.access_token, id).catch(() => {
+        // Best-effort — expire_holds() (pg_cron) frees the seats anyway once
+        // the TTL lapses, so a failed release here isn't user-facing.
+      });
+    }
+    router.back();
+  }
 
   useEffect(() => {
     if (!id || !session) return;
@@ -182,11 +220,7 @@ export default function CheckoutScreen() {
       style={[styles.hero, { backgroundColor: theme.brand }]}
     >
       <View style={styles.heroTopRow}>
-        <Pressable
-          onPress={() => router.back()}
-          hitSlop={8}
-          style={styles.backButton}
-        >
+        <Pressable onPress={goBack} hitSlop={8} style={styles.backButton}>
           <Ionicons name="chevron-back" size={22} color="#fff" />
         </Pressable>
         <Text style={styles.heroTitle}>Payment</Text>
@@ -238,16 +272,169 @@ export default function CheckoutScreen() {
   if (stage === "choose") {
     const insufficientWallet =
       wallet !== null && amount !== null && wallet.balance < amount;
+    const expired = secondsLeft === 0;
     return (
       <View style={{ flex: 1, backgroundColor: theme.background }}>
         {hero}
         <View style={styles.chooseContainer}>
-          <Text style={[styles.amountLabel, { color: theme.textSecondary }]}>
-            Amount due
-          </Text>
-          <Text style={[styles.amountValue, { color: theme.text }]}>
-            {amount !== null ? formatLkr(amount) : "—"}
-          </Text>
+          {booking && (
+            <View
+              style={[
+                styles.summaryCard,
+                { backgroundColor: theme.backgroundElement, borderColor: theme.border },
+              ]}
+            >
+              {booking.trip?.bus?.operator?.name && (
+                <View style={styles.operatorRow}>
+                  {booking.trip.bus.operator.logo_url ? (
+                    <Image
+                      source={{ uri: booking.trip.bus.operator.logo_url }}
+                      style={styles.operatorLogo}
+                    />
+                  ) : (
+                    <View style={[styles.operatorLogo, styles.operatorLogoFallback, { backgroundColor: theme.brand }]}>
+                      <Ionicons name="bus" size={16} color="#fff" />
+                    </View>
+                  )}
+                  <Text style={[styles.operatorName, { color: theme.text }]}>
+                    {booking.trip.bus.operator.name}
+                  </Text>
+                </View>
+              )}
+
+              <View style={styles.routeRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.routeLabel, { color: theme.textSecondary }]}>
+                    From
+                  </Text>
+                  <Text style={[styles.routeValue, { color: theme.text }]}>
+                    {booking.from_stop?.location?.name_en ?? "—"}
+                  </Text>
+                </View>
+                <View style={styles.routeLine}>
+                  <View style={[styles.routeDash, { borderColor: theme.border }]} />
+                  <Ionicons name="arrow-forward" size={14} color={theme.brand} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={[styles.routeLabel, { color: theme.textSecondary, textAlign: "right" }]}
+                  >
+                    To
+                  </Text>
+                  <Text style={[styles.routeValue, { color: theme.text, textAlign: "right" }]}>
+                    {booking.to_stop?.location?.name_en ?? "—"}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={[styles.dashedDivider, { borderColor: theme.border }]} />
+
+              <View style={styles.detailsGrid}>
+                <View style={styles.detailsRow}>
+                  <View style={styles.detailCell}>
+                    <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
+                      Date
+                    </Text>
+                    <Text style={[styles.detailValue, { color: theme.text }]}>
+                      {booking.trip?.depart_at
+                        ? new Date(booking.trip.depart_at).toLocaleDateString("en-LK", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })
+                        : "—"}
+                    </Text>
+                  </View>
+                  <View style={styles.detailCell}>
+                    <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
+                      Time
+                    </Text>
+                    <Text style={[styles.detailValue, { color: theme.text }]}>
+                      {booking.trip?.depart_at
+                        ? new Date(booking.trip.depart_at).toLocaleTimeString("en-LK", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
+                        : "—"}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.detailsRow}>
+                  <View style={styles.detailCell}>
+                    <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
+                      Passenger
+                    </Text>
+                    <Text style={[styles.detailValue, { color: theme.text }]}>
+                      {booking.seats.length}
+                    </Text>
+                  </View>
+                  <View style={styles.detailCell}>
+                    <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
+                      Seat no.
+                    </Text>
+                    <Text style={[styles.detailValue, { color: theme.text }]}>
+                      {booking.seats.join(", ")}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              <View style={[styles.dashedDivider, { borderColor: theme.border }]} />
+
+              <View style={styles.summaryRow}>
+                <Text style={{ color: theme.textSecondary, fontSize: 14 }}>Subtotal</Text>
+                <Text style={{ color: theme.text, fontSize: 14 }}>
+                  {formatLkr(booking.amount)}
+                </Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Text style={{ color: theme.textSecondary, fontSize: 14 }}>
+                  Convenience fee (2%)
+                </Text>
+                <Text style={{ color: theme.text, fontSize: 14 }}>
+                  {formatLkr(booking.amount * CONVENIENCE_FEE_PCT)}
+                </Text>
+              </View>
+
+              <View style={[styles.dashedDivider, { borderColor: theme.border }]} />
+
+              <View style={styles.summaryRow}>
+                <Text style={{ color: theme.text, fontWeight: "800", fontSize: 16 }}>
+                  Amount due
+                </Text>
+                <Text style={{ color: theme.brand, fontWeight: "800", fontSize: 16 }}>
+                  {formatLkr(booking.amount * (1 + CONVENIENCE_FEE_PCT))}
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {secondsLeft !== null && (
+            <View style={styles.holdTimerRow}>
+              <Ionicons
+                name="time-outline"
+                size={14}
+                color={expired ? "#dc2626" : theme.textSecondary}
+              />
+              <Text
+                style={[
+                  styles.holdTimerText,
+                  { color: expired ? "#dc2626" : theme.textSecondary },
+                ]}
+              >
+                {expired
+                  ? "Seat hold expired"
+                  : `Seats held for ${formatCountdown(secondsLeft)}`}
+              </Text>
+            </View>
+          )}
+
+          {expired && (
+            <Text style={[styles.expiredHint, { color: theme.textSecondary }]}>
+              These seats may have been given to someone else. Go back and
+              select seats again.
+            </Text>
+          )}
 
           {error && (
             <Text
@@ -259,12 +446,12 @@ export default function CheckoutScreen() {
 
           <Pressable
             onPress={reviewWalletPayment}
-            disabled={insufficientWallet}
+            disabled={insufficientWallet || expired}
             style={[
               styles.methodButton,
               {
                 borderColor: theme.border,
-                opacity: insufficientWallet ? 0.5 : 1,
+                opacity: insufficientWallet || expired ? 0.5 : 1,
               },
             ]}
           >
@@ -295,7 +482,11 @@ export default function CheckoutScreen() {
 
           <Pressable
             onPress={payWithCard}
-            style={[styles.methodButton, { borderColor: theme.border }]}
+            disabled={expired}
+            style={[
+              styles.methodButton,
+              { borderColor: theme.border, opacity: expired ? 0.5 : 1 },
+            ]}
           >
             <Ionicons name="card-outline" size={20} color={theme.brand} />
             <View style={{ flex: 1 }}>
@@ -331,7 +522,8 @@ export default function CheckoutScreen() {
   }
 
   if (stage === "wallet-confirm" && booking) {
-    const insufficientWallet = wallet !== null && wallet.balance < booking.amount;
+    const totalWithFee = booking.amount * (1 + CONVENIENCE_FEE_PCT);
+    const insufficientWallet = wallet !== null && wallet.balance < totalWithFee;
     return (
       <View style={{ flex: 1, backgroundColor: theme.background }}>
         {hero}
@@ -351,46 +543,10 @@ export default function CheckoutScreen() {
 
             <View style={[styles.dashedDivider, { borderColor: theme.border }]} />
 
-            {booking.trip?.bus?.operator?.name && (
-              <View style={styles.summaryRow}>
-                <Text style={{ color: theme.textSecondary }}>Operator</Text>
-                <Text style={{ color: theme.text, fontWeight: "600" }}>
-                  {booking.trip.bus.operator.name}
-                </Text>
-              </View>
-            )}
-            {booking.from_stop?.location?.name_en && (
-              <View style={styles.summaryRow}>
-                <Text style={{ color: theme.textSecondary }}>Pickup point</Text>
-                <Text style={{ color: theme.text, fontWeight: "600" }}>
-                  {booking.from_stop.location.name_en}
-                </Text>
-              </View>
-            )}
-            <View style={styles.summaryRow}>
-              <Text style={{ color: theme.textSecondary }}>Seats</Text>
-              <Text style={{ color: theme.text, fontWeight: "700" }}>
-                {booking.seats.join(", ")}
-              </Text>
-            </View>
-            {booking.trip?.depart_at && (
-              <View style={styles.summaryRow}>
-                <Text style={{ color: theme.textSecondary }}>Departs</Text>
-                <Text style={{ color: theme.text, fontWeight: "600" }}>
-                  {formatDateTime(booking.trip.depart_at)}
-                </Text>
-              </View>
-            )}
-            <View style={styles.summaryRow}>
-              <Text style={{ color: theme.textSecondary }}>Reference</Text>
-              <Text style={{ color: theme.text }}>
-                {booking.id.slice(0, 8).toUpperCase()}
-              </Text>
-            </View>
             <View style={styles.summaryRow}>
               <Text style={{ color: theme.textSecondary }}>Amount to pay</Text>
               <Text style={{ color: theme.brand, fontWeight: "800" }}>
-                {formatLkr(booking.amount)}
+                {formatLkr(totalWithFee)}
               </Text>
             </View>
           </View>
@@ -410,7 +566,7 @@ export default function CheckoutScreen() {
             ]}
           >
             <Text style={styles.payButtonLabel}>
-              {insufficientWallet ? "Insufficient balance" : `Pay ${formatLkr(booking.amount)}`}
+              {insufficientWallet ? "Insufficient balance" : `Pay ${formatLkr(totalWithFee)}`}
             </Text>
           </Pressable>
 
@@ -529,6 +685,38 @@ const styles = StyleSheet.create({
     padding: Spacing.four,
     marginBottom: Spacing.four,
   },
+  summaryTitle: { fontSize: 16, fontWeight: "800", marginBottom: Spacing.three },
+  operatorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.two,
+    marginBottom: Spacing.three,
+  },
+  operatorLogo: { width: 32, height: 32, borderRadius: 8 },
+  operatorLogoFallback: { alignItems: "center", justifyContent: "center" },
+  operatorName: { fontSize: 15, fontWeight: "700" },
+  routeRow: { flexDirection: "row", alignItems: "center", gap: Spacing.three },
+  routeLabel: { fontSize: 11, marginBottom: 2 },
+  routeValue: { fontSize: 14, fontWeight: "700" },
+  routeLine: { flexDirection: "row", alignItems: "center", width: 40 },
+  routeDash: { flex: 1, borderTopWidth: 1, borderStyle: "dashed" },
+  chipRow: { flexDirection: "row", gap: Spacing.two, marginTop: Spacing.three },
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    borderRadius: 10,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 6,
+  },
+  chipText: { fontSize: 12, fontWeight: "600" },
+  detailsGrid: { marginTop: Spacing.one, gap: Spacing.three },
+  detailsRow: { flexDirection: "row" },
+  detailCell: { flex: 1, gap: 2 },
+  detailLabel: { fontSize: 11 },
+  detailValue: { fontSize: 14, fontWeight: "700" },
   summaryLabel: { fontSize: 12 },
   summaryValue: { fontSize: 26, fontWeight: "800", marginTop: 2 },
   dashedDivider: {
@@ -544,4 +732,17 @@ const styles = StyleSheet.create({
   },
   payButtonLabel: { color: "#fff", fontWeight: "800", fontSize: 16 },
   backLink: { alignItems: "center", paddingVertical: Spacing.three, marginTop: Spacing.two },
+  holdTimerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginBottom: Spacing.three,
+  },
+  holdTimerText: { fontSize: 13, fontWeight: "600" },
+  expiredHint: {
+    fontSize: 12,
+    textAlign: "center",
+    marginBottom: Spacing.three,
+  },
 });

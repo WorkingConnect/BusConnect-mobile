@@ -180,8 +180,18 @@ export interface Booking {
   tickets?: { id: string; status: string; qr_signature: string | null }[];
   payments?: { id: string; status: string; amount: number }[];
   refunds?: { id: string; amount: number; reason: string; status: string }[];
-  trip?: { depart_at: string; bus?: { operator?: { name: string } | null } | null };
+  trip?: {
+    depart_at: string;
+    bus?: {
+      reg_no?: string | null;
+      operator?: { name: string; logo_url?: string | null } | null;
+    } | null;
+  };
   from_stop?: { location?: { name_en: string } | null } | null;
+  to_stop?: { location?: { name_en: string } | null } | null;
+  /** All rows share the same expires_at — they're created together by one
+   *  hold_seats() call and linked to this booking as a group. */
+  holds?: { expires_at: string }[];
 }
 
 export interface CancelResult {

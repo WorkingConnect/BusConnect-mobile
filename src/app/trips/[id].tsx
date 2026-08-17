@@ -188,7 +188,8 @@ export default function TripDetailScreen() {
       {trip && (
         <>
           <Text style={styles.heroSubtitle}>
-            {trip.bus.bus_type.name} · {trip.bus.reg_no}
+            {trip.bus.bus_type.name}
+            {trip.bus.bus_type.name.includes(trip.bus.reg_no) ? "" : ` · ${trip.bus.reg_no}`}
           </Text>
           <View style={styles.heroBadgeRow}>
             <View style={styles.heroBadge}>
@@ -461,16 +462,28 @@ function CrewBadge({
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   hero: {
+    alignItems: "center",
     paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.three,
+    paddingTop: 0,
     paddingBottom: Spacing.four,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
   },
-  backButton: { alignSelf: "flex-start", marginBottom: Spacing.two },
-  heroTitle: { fontSize: 22, fontWeight: "800", color: "#fff", letterSpacing: -0.3 },
-  heroSubtitle: { fontSize: 13, color: "rgba(255,255,255,0.85)", marginTop: Spacing.one },
-  heroBadgeRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: Spacing.three },
+  backButton: { alignSelf: "flex-start", marginBottom: Spacing.one },
+  heroTitle: { fontSize: 22, fontWeight: "800", color: "#fff", letterSpacing: -0.3, textAlign: "center" },
+  heroSubtitle: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.85)",
+    marginTop: Spacing.one,
+    textAlign: "center",
+  },
+  heroBadgeRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 6,
+    marginTop: Spacing.three,
+  },
   heroBadge: {
     flexDirection: "row",
     alignItems: "center",
