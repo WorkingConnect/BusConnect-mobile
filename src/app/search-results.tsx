@@ -50,6 +50,8 @@ export default function SearchResultsScreen() {
   const [resultsState, setResultsState] = useState<{ key: string; data: TripSearchResult[] } | null>(null);
   const [errorState, setErrorState] = useState<{ key: string; message: string } | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showBusTypeSheet, setShowBusTypeSheet] = useState(false);
+  const [busTypeFilter, setBusTypeFilter] = useState<string | null>(null);
 
   useEffect(() => {
     if (!from || !to || !date) return;
@@ -67,6 +69,21 @@ export default function SearchResultsScreen() {
   const results = resultsState?.key === requestKey ? resultsState.data : null;
   const error = errorState?.key === requestKey ? errorState.message : null;
 
+  const busTypes = useMemo(
+    () => Array.from(new Set((results ?? []).map((r) => r.bus_type_class))).sort(),
+    [results],
+  );
+  const filteredResults = useMemo(
+    () => (results && busTypeFilter ? results.filter((r) => r.bus_type_class === busTypeFilter) : results),
+    [results, busTypeFilter],
+  );
+
+  // Reset a filter that no longer matches any result for this search (new
+  // date/route swapped underneath it) rather than silently showing nothing.
+  useEffect(() => {
+    if (busTypeFilter && !busTypes.includes(busTypeFilter)) setBusTypeFilter(null);
+  }, [busTypes, busTypeFilter]);
+
   const pickerValue = useMemo(() => (date ? new Date(`${date}T00:00:00`) : new Date()), [date]);
 
   function onDateChange(next: Date) {
@@ -82,13 +99,24 @@ export default function SearchResultsScreen() {
         <Text style={styles.heroTitle}>Search results</Text>
         <View style={{ width: 22 }} />
       </View>
-      {date && (
-        <Pressable onPress={() => setShowDatePicker(true)} style={styles.dateChip} hitSlop={8}>
-          <Ionicons name="calendar-outline" size={14} color="#fff" />
-          <Text style={styles.heroSubtitle}>{formatDate(date)}</Text>
-          <Ionicons name="chevron-down" size={14} color="rgba(255,255,255,0.85)" />
-        </Pressable>
-      )}
+      <View style={styles.chipRow}>
+        {date && (
+          <Pressable onPress={() => setShowDatePicker(true)} style={styles.dateChip} hitSlop={8}>
+            <Ionicons name="calendar-outline" size={14} color="#fff" />
+            <Text style={styles.heroSubtitle}>{formatDate(date)}</Text>
+            <Ionicons name="chevron-down" size={14} color="rgba(255,255,255,0.85)" />
+          </Pressable>
+        )}
+        {busTypes.length > 0 && (
+          <Pressable onPress={() => setShowBusTypeSheet(true)} style={styles.dateChip} hitSlop={8}>
+            <Ionicons name="bus-outline" size={14} color="#fff" />
+            <Text style={styles.heroSubtitle}>
+              {busTypeFilter ? busTypeFilter.replace("_", " ") : "Bus type"}
+            </Text>
+            <Ionicons name="chevron-down" size={14} color="rgba(255,255,255,0.85)" />
+          </Pressable>
+        )}
+      </View>
     </SafeAreaView>
   );
 
@@ -133,6 +161,48 @@ export default function SearchResultsScreen() {
     </>
   );
 
+  const busTypeSheet = showBusTypeSheet && (
+    <View style={StyleSheet.absoluteFill}>
+      <Pressable
+        style={[StyleSheet.absoluteFill, styles.overlay]}
+        onPress={() => setShowBusTypeSheet(false)}
+      />
+      <View style={[styles.datePickerSheet, { backgroundColor: theme.backgroundElement }]}>
+        <View style={[styles.datePickerHeader, { justifyContent: "space-between" }]}>
+          <Text style={{ color: theme.text, fontWeight: "700", fontSize: 15 }}>Bus type</Text>
+          <Pressable onPress={() => setShowBusTypeSheet(false)} hitSlop={8}>
+            <Text style={{ color: theme.brand, fontWeight: "700", fontSize: 15 }}>Done</Text>
+          </Pressable>
+        </View>
+        <Pressable
+          style={styles.busTypeOption}
+          onPress={() => {
+            setBusTypeFilter(null);
+            setShowBusTypeSheet(false);
+          }}
+        >
+          <Text style={{ color: theme.text, fontSize: 15 }}>All bus types</Text>
+          {!busTypeFilter && <Ionicons name="checkmark" size={18} color={theme.brand} />}
+        </Pressable>
+        {busTypes.map((type) => (
+          <Pressable
+            key={type}
+            style={styles.busTypeOption}
+            onPress={() => {
+              setBusTypeFilter(type);
+              setShowBusTypeSheet(false);
+            }}
+          >
+            <Text style={{ color: theme.text, fontSize: 15, textTransform: "capitalize" }}>
+              {type.replace("_", " ")}
+            </Text>
+            {busTypeFilter === type && <Ionicons name="checkmark" size={18} color={theme.brand} />}
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+
   let content: ReactNode;
   if (error) {
     content = (
@@ -156,12 +226,23 @@ export default function SearchResultsScreen() {
         </Text>
       </View>
     );
+  } else if ((filteredResults ?? []).length === 0) {
+    content = (
+      <View style={styles.center}>
+        <Text style={{ color: theme.textSecondary, textAlign: "center" }}>
+          No {busTypeFilter?.replace("_", " ")} buses for this route and date.
+        </Text>
+        <Pressable onPress={() => setBusTypeFilter(null)} style={{ marginTop: Spacing.two }}>
+          <Text style={{ color: theme.brand, fontWeight: "700" }}>Clear filter</Text>
+        </Pressable>
+      </View>
+    );
   } else {
     content = (
       <FlatList
         style={{ backgroundColor: theme.background }}
         contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three }}
-        data={results}
+        data={filteredResults}
         keyExtractor={(item) => `${item.trip_id}-${item.from_stop_id}-${item.to_stop_id}`}
         renderItem={({ item }) => <TripCard trip={item} theme={theme} />}
       />
@@ -173,6 +254,7 @@ export default function SearchResultsScreen() {
       {hero}
       {content}
       {datePickerOverlay}
+      {busTypeSheet}
     </View>
   );
 }
@@ -291,12 +373,17 @@ const styles = StyleSheet.create({
   heroTopRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   backButton: { width: 22 },
   heroTitle: { fontSize: 18, fontWeight: "800", color: "#fff", letterSpacing: -0.3 },
+  chipRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: Spacing.two,
+  },
   dateChip: {
     flexDirection: "row",
     alignItems: "center",
     alignSelf: "flex-start",
     gap: 6,
-    marginTop: Spacing.two,
     backgroundColor: "rgba(255,255,255,0.15)",
     borderRadius: 999,
     paddingHorizontal: 12,
@@ -320,6 +407,13 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
   },
   datePickerNative: { alignSelf: "center", width: 300, height: 300 },
+  busTypeOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.three,
+  },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: Spacing.four },
   card: { borderWidth: 1, borderRadius: 16, overflow: "hidden" },
   thumbWrap: { width: "100%", height: 120 },
