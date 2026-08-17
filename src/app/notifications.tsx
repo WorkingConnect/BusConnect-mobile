@@ -1,6 +1,9 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import Swipeable, { type SwipeableMethods } from "react-native-gesture-handler/ReanimatedSwipeable";
+import Animated, { type SharedValue, useAnimatedStyle } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect, type Href } from "expo-router";
 import { useTheme } from "@/hooks/use-theme";
@@ -9,6 +12,7 @@ import {
   listNotifications,
   markNotificationRead,
   markAllNotificationsRead,
+  deleteNotification,
   ApiError,
   type NotificationItem,
 } from "@/lib/api";
@@ -58,6 +62,17 @@ export default function NotificationsScreen() {
     await markAllNotificationsRead(session.access_token);
   }
 
+  async function onDelete(id: string) {
+    if (!session) return;
+    setItems((prev) => prev?.filter((i) => i.id !== id) ?? null);
+    try {
+      await deleteNotification(session.access_token, id);
+    } catch {
+      // Best-effort — a failed delete just means it reappears on next load,
+      // which is a fine fallback for a swipe action with no visible retry UI.
+    }
+  }
+
   const hasUnread = items?.some((i) => !i.readAt) ?? false;
 
   return (
@@ -90,33 +105,79 @@ export default function NotificationsScreen() {
           <Text style={{ color: theme.textSecondary, marginTop: Spacing.three }}>Nothing yet — you&apos;re all caught up.</Text>
         </View>
       ) : (
-        <FlatList
-          data={items ?? []}
-          keyExtractor={(i) => i.id}
-          contentContainerStyle={{ padding: Spacing.four, gap: Spacing.two }}
-          renderItem={({ item }) => (
-            <Pressable
-              onPress={() => onTap(item)}
-              style={[
-                styles.row,
-                { backgroundColor: theme.backgroundElement, borderColor: theme.border },
-              ]}
-            >
-              {!item.readAt && <View style={[styles.unreadDot, { backgroundColor: theme.brand }]} />}
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.title, { color: theme.text }]} numberOfLines={1}>
-                  {item.title}
-                </Text>
-                <Text style={[styles.body, { color: theme.textSecondary }]} numberOfLines={2}>
-                  {item.body}
-                </Text>
-                <Text style={[styles.time, { color: theme.textSecondary }]}>{timeAgo(item.createdAt)}</Text>
-              </View>
-            </Pressable>
-          )}
-        />
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <FlatList
+            data={items ?? []}
+            keyExtractor={(i) => i.id}
+            contentContainerStyle={{ padding: Spacing.four, gap: Spacing.two }}
+            renderItem={({ item }) => (
+              <NotificationRow
+                item={item}
+                theme={theme}
+                onPress={() => onTap(item)}
+                onDelete={() => onDelete(item.id)}
+              />
+            )}
+          />
+        </GestureHandlerRootView>
       )}
     </View>
+  );
+}
+
+/** Swipe left to reveal a delete button — tap it to remove (no auto-delete
+ *  on full swipe, so a stray gesture can't lose a notification by accident). */
+function NotificationRow({
+  item,
+  theme,
+  onPress,
+  onDelete,
+}: {
+  item: NotificationItem;
+  theme: ReturnType<typeof useTheme>;
+  onPress: () => void;
+  onDelete: () => void;
+}) {
+  const swipeableRef = useRef<SwipeableMethods>(null);
+
+  function renderRightActions(progress: SharedValue<number>) {
+    const style = useAnimatedStyle(() => ({
+      transform: [{ scale: Math.min(progress.value, 1) }],
+    }));
+    return (
+      <Animated.View style={[styles.deleteAction, style]}>
+        <Pressable
+          onPress={() => {
+            swipeableRef.current?.close();
+            onDelete();
+          }}
+          style={styles.deleteButton}
+          hitSlop={8}
+        >
+          <Ionicons name="trash-outline" size={20} color="#fff" />
+        </Pressable>
+      </Animated.View>
+    );
+  }
+
+  return (
+    <Swipeable ref={swipeableRef} renderRightActions={renderRightActions} friction={2} rightThreshold={40}>
+      <Pressable
+        onPress={onPress}
+        style={[styles.row, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
+      >
+        {!item.readAt && <View style={[styles.unreadDot, { backgroundColor: theme.brand }]} />}
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.title, { color: theme.text }]} numberOfLines={1}>
+            {item.title}
+          </Text>
+          <Text style={[styles.body, { color: theme.textSecondary }]} numberOfLines={2}>
+            {item.body}
+          </Text>
+          <Text style={[styles.time, { color: theme.textSecondary }]}>{timeAgo(item.createdAt)}</Text>
+        </View>
+      </Pressable>
+    </Swipeable>
   );
 }
 
@@ -146,4 +207,13 @@ const styles = StyleSheet.create({
   title: { fontSize: 14, fontWeight: "700" },
   body: { fontSize: 13, marginTop: 2, lineHeight: 18 },
   time: { fontSize: 11, marginTop: 6 },
+  deleteAction: { justifyContent: "center", alignItems: "flex-end", paddingLeft: Spacing.two },
+  deleteButton: {
+    backgroundColor: "#dc2626",
+    borderRadius: 14,
+    width: 52,
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });

@@ -481,6 +481,13 @@ export function markAllNotificationsRead(accessToken: string) {
   });
 }
 
+export function deleteNotification(accessToken: string, id: string) {
+  return request<{ ok: true }>(`/notifications/${id}`, {
+    method: "DELETE",
+    accessToken,
+  });
+}
+
 export function unregisterPushToken(accessToken: string, token: string) {
   return request<{ ok: true }>("/notifications/push-token", {
     method: "DELETE",
