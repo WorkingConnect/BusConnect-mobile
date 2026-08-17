@@ -5,6 +5,7 @@ import {
   Modal,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
@@ -179,11 +180,30 @@ export default function TripDetailScreen() {
     }
   }
 
+  function shareTrip() {
+    if (!id) return;
+    const params = new URLSearchParams();
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
+    const query = params.toString();
+    const url = `https://busconnect.lk/en/trips/${id}${query ? `?${query}` : ""}`;
+    const operatorName = trip?.bus.operator?.name ?? "this trip";
+    void Share.share({
+      message: `${operatorName} on BusConnect — ${url}`,
+      url,
+    });
+  }
+
   const hero = (
     <SafeAreaView edges={["top"]} style={[styles.hero, { backgroundColor: theme.brand }]}>
-      <Pressable onPress={() => router.back()} hitSlop={8} style={styles.backButton}>
-        <Ionicons name="chevron-back" size={22} color="#fff" />
-      </Pressable>
+      <View style={styles.heroTopRow}>
+        <Pressable onPress={() => router.back()} hitSlop={8} style={styles.backButton}>
+          <Ionicons name="chevron-back" size={22} color="#fff" />
+        </Pressable>
+        <Pressable onPress={shareTrip} hitSlop={8} style={styles.backButton}>
+          <Ionicons name="share-outline" size={20} color="#fff" />
+        </Pressable>
+      </View>
       <Text style={styles.heroTitle}>{trip?.bus.operator?.name ?? "Trip details"}</Text>
       {trip && (
         <>
@@ -469,7 +489,14 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
   },
-  backButton: { alignSelf: "flex-start", marginBottom: Spacing.one },
+  heroTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    width: "100%",
+    marginBottom: Spacing.one,
+  },
+  backButton: {},
   heroTitle: { fontSize: 22, fontWeight: "800", color: "#fff", letterSpacing: -0.3, textAlign: "center" },
   heroSubtitle: {
     fontSize: 13,
