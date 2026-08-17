@@ -180,7 +180,8 @@ export interface Booking {
   tickets?: { id: string; status: string; qr_signature: string | null }[];
   payments?: { id: string; status: string; amount: number }[];
   refunds?: { id: string; amount: number; reason: string; status: string }[];
-  trip?: { depart_at: string };
+  trip?: { depart_at: string; bus?: { operator?: { name: string } | null } | null };
+  from_stop?: { location?: { name_en: string } | null } | null;
 }
 
 export interface CancelResult {

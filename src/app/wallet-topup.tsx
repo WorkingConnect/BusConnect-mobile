@@ -27,7 +27,12 @@ const MIN_AMOUNT = 500;
 /** Same MPGS Hosted Checkout shell as the booking checkout screen — see
  *  checkout/[id].tsx for why the callbacks are function *names*, not URLs. */
 function checkoutHtml(checkout: MpgsCheckoutSession) {
-  return `<!doctype html><html><body>
+  return `<!doctype html><html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+    <style>html, body { margin: 0; padding: 0; }</style>
+  </head>
+  <body>
     <script>
       window.mpgsErrorCallback = function (err) {
         window.ReactNativeWebView.postMessage(JSON.stringify({ type: "error", err: String(err) }));
@@ -35,11 +40,17 @@ function checkoutHtml(checkout: MpgsCheckoutSession) {
       window.mpgsCancelCallback = function () {
         window.ReactNativeWebView.postMessage(JSON.stringify({ type: "cancel" }));
       };
+      // Global safety net — Checkout.configure() can throw asynchronously
+      // outside the try/catch below when this document has no real origin.
+      window.onerror = function (message) {
+        window.mpgsErrorCallback(message);
+      };
     </script>
     <script
       src="${checkout.checkoutJsUrl}"
       data-error="mpgsErrorCallback"
       data-cancel="mpgsCancelCallback"
+      onerror="window.mpgsErrorCallback('checkout.min.js failed to load')"
     ></script>
     <script>
       (async function () {
@@ -77,6 +88,10 @@ export default function WalletTopupScreen() {
         setStage("checkout");
       })
       .catch((e) => {
+        console.log(
+          "[wallet topup] startCheckout failed:",
+          e instanceof ApiError ? `ApiError status=${e.status} message=${e.message}` : String(e),
+        );
         setError(e instanceof ApiError ? e.message : "Could not start top-up.");
         setStage("amount");
       });
@@ -84,18 +99,27 @@ export default function WalletTopupScreen() {
 
   // MPGS's return_url resolves through our API to `${webBaseUrl}/wallet?...`
   // — once the WebView reaches that, hand off to the native wallet screen.
+  // Must NOT match our own API's intermediate return endpoint
+  // (`/api/wallet/mpgs/return`), which also contains "/wallet" — matching it
+  // there blocks the WebView from ever loading that URL via
+  // onShouldStartLoadWithRequest, so the backend confirmation handler that
+  // credits the balance, logs the transaction, and sends SMS never runs.
+  function isFinalWalletPage(url: string) {
+    return url.includes("/wallet") && !url.includes("/api/");
+  }
   function backToWallet() {
     router.replace("/wallet");
   }
 
   function onNavigate(nav: WebViewNavigation) {
-    if (nav.url.includes("/wallet")) backToWallet();
+    if (isFinalWalletPage(nav.url)) backToWallet();
   }
 
   function onMessage(event: WebViewMessageEvent) {
     try {
       const data = JSON.parse(event.nativeEvent.data);
       if (data.type === "error") {
+        console.log("[mpgs webview topup] error:", data.err);
         setError("Payment could not start. Please try again.");
         setStage("amount");
       }
@@ -130,16 +154,41 @@ export default function WalletTopupScreen() {
         {hero}
         <WebView
           style={{ flex: 1 }}
-          source={{ html: checkoutHtml(checkout) }}
+          // baseUrl gives this raw-HTML document a real https:// origin —
+          // without it MPGS's checkout.min.js throws inside
+          // Checkout.configure() (see checkout/[id].tsx for the full story).
+          source={{ html: checkoutHtml(checkout), baseUrl: "https://busconnect.lk" }}
           onNavigationStateChange={onNavigate}
           onMessage={onMessage}
           onShouldStartLoadWithRequest={(req) => {
-            if (req.url.includes("/wallet")) {
+            if (isFinalWalletPage(req.url)) {
               backToWallet();
               return false;
             }
             return true;
           }}
+          // Forces a mobile viewport on every page this WebView navigates to
+          // (including MPGS's real hosted page after showPaymentPage()'s
+          // internal redirect) — the <meta> baked into checkoutHtml() only
+          // covers our own bootstrap document. See checkout/[id].tsx.
+          injectedJavaScriptBeforeContentLoaded={`
+            (function () {
+              var meta = document.querySelector('meta[name="viewport"]');
+              if (!meta) {
+                meta = document.createElement('meta');
+                meta.name = 'viewport';
+                document.head && document.head.appendChild(meta);
+              }
+              meta.content = 'width=device-width, initial-scale=1, maximum-scale=1';
+            })();
+            true;
+          `}
+          startInLoadingState
+          renderLoading={() => (
+            <View style={[StyleSheet.absoluteFill, { alignItems: "center", justifyContent: "center", backgroundColor: theme.background }]}>
+              <ActivityIndicator color={theme.brand} />
+            </View>
+          )}
         />
       </View>
     );

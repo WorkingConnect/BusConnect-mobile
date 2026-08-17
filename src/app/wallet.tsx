@@ -121,11 +121,11 @@ export default function WalletScreen() {
                   <Text style={styles.topupButtonText}>Top up wallet</Text>
                 </Pressable>
               </View>
-              <View
-                style={[styles.balanceFooter, { backgroundColor: theme.brand }]}
-              >
-                <Text style={styles.balanceFooterLabel}>Balance</Text>
-                <Text style={styles.balanceFooterValue}>
+              <View style={styles.balanceFooter}>
+                <Text style={[styles.balanceFooterLabel, { color: theme.textSecondary }]}>
+                  Balance
+                </Text>
+                <Text style={[styles.balanceFooterValue, { color: theme.text }]}>
                   {formatLkr(wallet?.balance ?? 0)}
                 </Text>
               </View>
@@ -270,9 +270,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
     paddingVertical: Spacing.three,
   },
-  balanceFooterLabel: { color: "rgba(255,255,255,0.8)", fontSize: 12 },
+  balanceFooterLabel: { fontSize: 12 },
   balanceFooterValue: {
-    color: "#fff",
     fontSize: 24,
     fontWeight: "800",
     marginTop: 2,

@@ -40,7 +40,12 @@ function formatLkr(amount: number) {
  * client-side success callback for this flow at all.
  */
 function checkoutHtml(checkout: MpgsCheckoutSession) {
-  return `<!doctype html><html><body>
+  return `<!doctype html><html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+    <style>html, body { margin: 0; padding: 0; }</style>
+  </head>
+  <body>
     <script>
       window.mpgsErrorCallback = function (err) {
         window.ReactNativeWebView.postMessage(JSON.stringify({ type: "error", err: String(err) }));
@@ -48,11 +53,18 @@ function checkoutHtml(checkout: MpgsCheckoutSession) {
       window.mpgsCancelCallback = function () {
         window.ReactNativeWebView.postMessage(JSON.stringify({ type: "cancel" }));
       };
+      // Global safety net — Checkout.configure() can throw asynchronously
+      // outside the try/catch below (observed when this document had no
+      // baseUrl, so window.onerror is worth keeping even now that it does).
+      window.onerror = function (message) {
+        window.mpgsErrorCallback(message);
+      };
     </script>
     <script
       src="${checkout.checkoutJsUrl}"
       data-error="mpgsErrorCallback"
       data-cancel="mpgsCancelCallback"
+      onerror="window.mpgsErrorCallback('checkout.min.js failed to load')"
     ></script>
     <script>
       (async function () {
@@ -301,7 +313,13 @@ export default function CheckoutScreen() {
       {hero}
       <WebView
         style={{ flex: 1 }}
-        source={{ html: checkoutHtml(checkout) }}
+        // baseUrl gives this raw-HTML document a real https:// origin instead
+        // of null/about:blank. Without it, MPGS's checkout.min.js throws an
+        // uncaught error inside Checkout.configure() (masked as a generic
+        // cross-origin "Script error." by the browser's same-origin script
+        // error policy) — almost certainly an anti-embedding origin check in
+        // their SDK rejecting a document with no real origin.
+        source={{ html: checkoutHtml(checkout), baseUrl: "https://busconnect.lk" }}
         onNavigationStateChange={onNavigate}
         onMessage={onMessage}
         onShouldStartLoadWithRequest={(req) => {
@@ -311,6 +329,30 @@ export default function CheckoutScreen() {
           }
           return true;
         }}
+        // The viewport meta tag baked into checkoutHtml() only covers our own
+        // bootstrap document — showPaymentPage() then navigates the WebView
+        // to MPGS's own hosted page, a completely different document our
+        // meta tag never touches. injectedJavaScriptBeforeContentLoaded runs
+        // on every navigation in this WebView (unlike source.html), so it's
+        // the only way to force a mobile-sized viewport on MPGS's real page.
+        injectedJavaScriptBeforeContentLoaded={`
+          (function () {
+            var meta = document.querySelector('meta[name="viewport"]');
+            if (!meta) {
+              meta = document.createElement('meta');
+              meta.name = 'viewport';
+              document.head && document.head.appendChild(meta);
+            }
+            meta.content = 'width=device-width, initial-scale=1, maximum-scale=1';
+          })();
+          true;
+        `}
+        startInLoadingState
+        renderLoading={() => (
+          <View style={[StyleSheet.absoluteFill, styles.center, { backgroundColor: theme.background }]}>
+            <ActivityIndicator color={theme.brand} />
+          </View>
+        )}
       />
     </View>
   );
