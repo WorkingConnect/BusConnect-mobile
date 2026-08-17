@@ -24,7 +24,9 @@
         "foregroundImage": "./assets/images/android-icon-foreground.png"
       },
       "predictiveBackGestureEnabled": false,
-      "permissions": ["android.permission.RECORD_AUDIO"],
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ],
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyAWcBofkfWHUye3Xy_fpusxzq6XtfEZtZY"
@@ -72,7 +74,8 @@
         {
           "locationWhenInUsePermission": "BusConnect shows your position on the map while tracking a bus."
         }
-      ]
+      ],
+      "expo-image"
     ],
     "experiments": {
       "typedRoutes": true,
