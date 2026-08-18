@@ -26,6 +26,12 @@ interface RouteRow {
   route_card_id: string | null;
 }
 
+interface RouteCardRow {
+  id: string;
+  name: string;
+  image_url: string | null;
+}
+
 /** One row of popular_route_card_activity() — see BusConnect-api's 0062_route_card_popularity.sql. */
 interface ActivityRow {
   route_card_id: string | null;
@@ -53,7 +59,11 @@ type GroupAgg = {
  * Same aggregation as BusConnect-web's lib/popular-routes.ts, adapted to a
  * plain client-side Supabase read (no Next.js unstable_cache here) — every
  * published route is guaranteed to appear, ranked above ones without real
- * upcoming trips by how many trips actually exist for that group.
+ * upcoming trips by how many trips actually exist for that group. So is
+ * every route CARD, even ones admin hasn't linked any actual route to yet —
+ * those get a routeCardId-only entry (empty routeId, never used since
+ * searchRoute() always prefers routeCardId when present) and will simply
+ * resolve to the normal "no buses found" search state when tapped.
  *
  * Routes sharing a route card (e.g. two operators both running
  * "Colombo - Jaffna" over physically different stops) are merged into one
@@ -63,11 +73,17 @@ type GroupAgg = {
 export async function listPopularRoutes(limit?: number): Promise<PopularRoute[]> {
   const byGroup = new Map<string, GroupAgg>();
 
-  const [{ data: routes, error: routesErr }, { data: activity, error: activityErr }] = await Promise.all([
+  const [
+    { data: routes, error: routesErr },
+    { data: routeCards, error: routeCardsErr },
+    { data: activity, error: activityErr },
+  ] = await Promise.all([
     supabase.from("routes").select("id, name, image_url, route_card_id"),
+    supabase.from("route_cards").select("id, name, image_url"),
     supabase.rpc("popular_route_card_activity"),
   ]);
   if (routesErr) console.error("listPopularRoutes: could not load the route catalog —", routesErr.message);
+  if (routeCardsErr) console.error("listPopularRoutes: could not load route cards —", routeCardsErr.message);
   if (activityErr) console.error("listPopularRoutes: could not load trip activity —", activityErr.message);
 
   for (const r of (routes ?? []) as unknown as RouteRow[]) {
@@ -88,6 +104,21 @@ export async function listPopularRoutes(limit?: number): Promise<PopularRoute[]>
         minFare: null,
       });
     }
+  }
+
+  for (const c of (routeCards ?? []) as unknown as RouteCardRow[]) {
+    if (byGroup.has(c.id)) continue; // already seeded by a route linked to this card
+    byGroup.set(c.id, {
+      routeCardId: c.id,
+      routeId: "", // never read — searchRoute() prefers routeCardId when set
+      name: c.name,
+      durationMinutes: null,
+      count: 0,
+      todayCount: 0,
+      nextDateIso: null,
+      imageUrl: c.image_url,
+      minFare: null,
+    });
   }
 
   for (const row of (activity ?? []) as unknown as ActivityRow[]) {
