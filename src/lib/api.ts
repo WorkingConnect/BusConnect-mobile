@@ -273,6 +273,18 @@ export function searchTrips(params: {
   return request<TripSearchResult[]>(`/search?${qs}`);
 }
 
+/** Journeys for every route sharing a route card, or a single card-less route — pass exactly one of routeCardId/routeId. */
+export function searchTripsByRoute(params: {
+  routeCardId?: string;
+  routeId?: string;
+  date: string;
+}) {
+  const qs = new URLSearchParams(
+    Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined)) as Record<string, string>,
+  ).toString();
+  return request<TripSearchResult[]>(`/search-by-route?${qs}`);
+}
+
 export function getTrip(id: string) {
   return request<TripDetail>(`/trips/${id}`);
 }

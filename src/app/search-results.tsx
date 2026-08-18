@@ -6,7 +6,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { useLocalSearchParams, router } from "expo-router";
 import { useTheme } from "@/hooks/use-theme";
 import { useThemeMode } from "@/lib/theme-mode-context";
-import { searchTrips, ApiError, type TripSearchResult } from "@/lib/api";
+import { searchTrips, searchTripsByRoute, ApiError, type TripSearchResult } from "@/lib/api";
 import { Banner } from "@/components/banner";
 import { Spacing } from "@/constants/theme";
 
@@ -42,8 +42,14 @@ function duration(depart: string, arrive: string) {
 export default function SearchResultsScreen() {
   const theme = useTheme();
   const { resolvedScheme } = useThemeMode();
-  const { from, to, date } = useLocalSearchParams<{ from: string; to: string; date: string }>();
-  const requestKey = `${from}-${to}-${date}`;
+  const { from, to, routeCardId, routeId, date } = useLocalSearchParams<{
+    from?: string;
+    to?: string;
+    routeCardId?: string;
+    routeId?: string;
+    date: string;
+  }>();
+  const requestKey = `${from}-${to}-${routeCardId}-${routeId}-${date}`;
   // Keyed by the request that produced it — lets "loading" fall naturally
   // out of a key mismatch instead of an imperative reset in the effect body
   // (a synchronous setState there would double-render on every param change).
@@ -54,8 +60,10 @@ export default function SearchResultsScreen() {
   const [busTypeFilter, setBusTypeFilter] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!from || !to || !date) return;
-    searchTrips({ from, to, date })
+    if (!date || !((from && to) || routeCardId || routeId)) return;
+    const request =
+      from && to ? searchTrips({ from, to, date }) : searchTripsByRoute({ routeCardId, routeId, date });
+    request
       .then((data) => setResultsState({ key: requestKey, data }))
       .catch((e) =>
         setErrorState({
@@ -63,8 +71,8 @@ export default function SearchResultsScreen() {
           message: e instanceof ApiError ? e.message : "Could not load trips. Pull down to try again.",
         }),
       );
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- requestKey is derived from from/to/date
-  }, [from, to, date]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- requestKey is derived from from/to/routeCardId/routeId/date
+  }, [from, to, routeCardId, routeId, date]);
 
   const results = resultsState?.key === requestKey ? resultsState.data : null;
   const error = errorState?.key === requestKey ? errorState.message : null;

@@ -1,10 +1,13 @@
 import { supabase } from "./supabase";
 
 export interface PopularRoute {
-  originId: string;
-  destId: string;
-  originName: string;
-  destName: string;
+  /** Set when this card groups one or more routes sharing a route card —
+   *  link to it with routeCardId. Null for a card-less route, which links
+   *  with routeId instead. */
+  routeCardId: string | null;
+  /** A representative route in this group — the link target when routeCardId is null. */
+  routeId: string;
+  name: string;
   durationMinutes: number | null;
   /** Total upcoming trips (any day) — used for popularity ranking. */
   tripCount: number;
@@ -17,17 +20,16 @@ export interface PopularRoute {
 }
 
 interface RouteRow {
-  origin_id: string;
-  dest_id: string;
+  id: string;
+  name: string;
   image_url: string | null;
-  origin: { name_en: string } | null;
-  dest: { name_en: string } | null;
+  route_card_id: string | null;
 }
 
-/** One row of popular_route_activity() — see BusConnect-api's 0043_popular_route_activity.sql. */
+/** One row of popular_route_card_activity() — see BusConnect-api's 0062_route_card_popularity.sql. */
 interface ActivityRow {
-  origin_id: string;
-  dest_id: string;
+  route_card_id: string | null;
+  route_id: string | null;
   trip_count: number;
   today_count: number;
   next_date: string | null;
@@ -35,11 +37,10 @@ interface ActivityRow {
   min_fare: number | null;
 }
 
-type PairAgg = {
-  originId: string;
-  destId: string;
-  originName: string;
-  destName: string;
+type GroupAgg = {
+  routeCardId: string | null;
+  routeId: string;
+  name: string;
   durationMinutes: number | null;
   count: number;
   todayCount: number;
@@ -52,41 +53,33 @@ type PairAgg = {
  * Same aggregation as BusConnect-web's lib/popular-routes.ts, adapted to a
  * plain client-side Supabase read (no Next.js unstable_cache here) — every
  * published route is guaranteed to appear, ranked above ones without real
- * upcoming trips by how many trips actually exist for that corridor.
+ * upcoming trips by how many trips actually exist for that group.
  *
- * Trip activity is counted by walking route_stops the same way
- * search_trips() does (popular_route_activity() RPC), not by a trip's own
- * route.origin_id/dest_id — a trip on a "Nittambuwa -> Colombo" route that
- * also stops at Maradana is findable by searching "Nittambuwa -> Maradana",
- * so it needs to count toward that corridor's card too.
+ * Routes sharing a route card (e.g. two operators both running
+ * "Colombo - Jaffna" over physically different stops) are merged into one
+ * card here, keyed by route_card_id — a card-less route is its own
+ * one-route group instead, keyed by its own id.
  */
 export async function listPopularRoutes(limit?: number): Promise<PopularRoute[]> {
-  const byPair = new Map<string, PairAgg>();
+  const byGroup = new Map<string, GroupAgg>();
 
   const [{ data: routes, error: routesErr }, { data: activity, error: activityErr }] = await Promise.all([
-    supabase
-      .from("routes")
-      .select(
-        `origin_id, dest_id, image_url,
-         origin:locations!routes_origin_id_fkey ( name_en ),
-         dest:locations!routes_dest_id_fkey ( name_en )`,
-      ),
-    supabase.rpc("popular_route_activity"),
+    supabase.from("routes").select("id, name, image_url, route_card_id"),
+    supabase.rpc("popular_route_card_activity"),
   ]);
   if (routesErr) console.error("listPopularRoutes: could not load the route catalog —", routesErr.message);
   if (activityErr) console.error("listPopularRoutes: could not load trip activity —", activityErr.message);
 
   for (const r of (routes ?? []) as unknown as RouteRow[]) {
-    const key = `${r.origin_id}|${r.dest_id}`;
-    const existing = byPair.get(key);
+    const key = r.route_card_id ?? `route:${r.id}`;
+    const existing = byGroup.get(key);
     if (existing) {
       if (!existing.imageUrl && r.image_url) existing.imageUrl = r.image_url;
     } else {
-      byPair.set(key, {
-        originId: r.origin_id,
-        destId: r.dest_id,
-        originName: r.origin?.name_en ?? "Unknown",
-        destName: r.dest?.name_en ?? "Unknown",
+      byGroup.set(key, {
+        routeCardId: r.route_card_id,
+        routeId: r.id,
+        name: r.name,
         durationMinutes: null,
         count: 0,
         todayCount: 0,
@@ -98,8 +91,9 @@ export async function listPopularRoutes(limit?: number): Promise<PopularRoute[]>
   }
 
   for (const row of (activity ?? []) as unknown as ActivityRow[]) {
-    const existing = byPair.get(`${row.origin_id}|${row.dest_id}`);
-    if (!existing) continue; // only card known catalog corridors, not every stop pair
+    const key = row.route_card_id ?? `route:${row.route_id}`;
+    const existing = byGroup.get(key);
+    if (!existing) continue; // only card known catalog groups, not orphaned trip data
     existing.count = row.trip_count;
     existing.todayCount = row.today_count;
     existing.nextDateIso = row.next_date;
@@ -107,14 +101,13 @@ export async function listPopularRoutes(limit?: number): Promise<PopularRoute[]>
     existing.minFare = row.min_fare;
   }
 
-  const sorted = [...byPair.values()].sort(
-    (a, b) => b.count - a.count || a.originName.localeCompare(b.originName),
+  const sorted = [...byGroup.values()].sort(
+    (a, b) => b.count - a.count || a.name.localeCompare(b.name),
   );
   const mapped = sorted.map((r) => ({
-    originId: r.originId,
-    destId: r.destId,
-    originName: r.originName,
-    destName: r.destName,
+    routeCardId: r.routeCardId,
+    routeId: r.routeId,
+    name: r.name,
     durationMinutes: r.durationMinutes,
     tripCount: r.count,
     todayCount: r.todayCount,

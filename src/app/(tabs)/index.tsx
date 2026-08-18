@@ -137,7 +137,9 @@ export default function SearchScreen() {
   function searchRoute(route: PopularRoute) {
     router.push({
       pathname: "/search-results",
-      params: { from: route.originId, to: route.destId, date: todayIso() },
+      params: route.routeCardId
+        ? { routeCardId: route.routeCardId, date: todayIso() }
+        : { routeId: route.routeId, date: todayIso() },
     });
   }
 
@@ -344,7 +346,7 @@ export default function SearchScreen() {
                 const dur = formatDuration(r.durationMinutes);
                 return (
                   <Pressable
-                    key={`${r.originId}-${r.destId}`}
+                    key={r.routeCardId ?? r.routeId}
                     onPress={() => searchRoute(r)}
                     style={[
                       styles.routeCard,
@@ -408,18 +410,7 @@ export default function SearchScreen() {
                           style={[styles.routeCardText, { color: theme.text }]}
                           numberOfLines={1}
                         >
-                          {r.originName}
-                        </Text>
-                        <Ionicons
-                          name="arrow-forward"
-                          size={13}
-                          color={theme.textSecondary}
-                        />
-                        <Text
-                          style={[styles.routeCardText, { color: theme.text }]}
-                          numberOfLines={1}
-                        >
-                          {r.destName}
+                          {r.name}
                         </Text>
                       </View>
                       <Text
