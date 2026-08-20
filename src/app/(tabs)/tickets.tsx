@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -70,8 +70,8 @@ export default function TicketsScreen() {
       .catch(() => setError("Could not load your tickets."));
   }, [session]);
 
-  useEffect(load, [load]);
-  // Refresh whenever this screen regains focus (e.g. back from checkout).
+  // useFocusEffect already runs on initial mount (first focus), so this
+  // also covers the load-on-mount case without a second, redundant fetch.
   useFocusEffect(load);
 
   const hero = (
