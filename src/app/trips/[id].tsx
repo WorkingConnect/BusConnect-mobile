@@ -269,7 +269,7 @@ export default function TripDetailScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
       {hero}
-      <ScrollView contentContainerStyle={{ padding: Spacing.three, paddingBottom: 140 }}>
+      <ScrollView contentContainerStyle={{ padding: Spacing.three, paddingBottom: 200 }}>
         <View
           style={[styles.journeyCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
         >
@@ -404,29 +404,6 @@ export default function TripDetailScreen() {
           ))}
         </View>
 
-        {stops.length > 0 && (
-          <View style={{ flexDirection: "row", gap: Spacing.two, marginTop: Spacing.three }}>
-            <Pressable
-              onPress={() => setStopPickerMode("from")}
-              style={[styles.stopField, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}
-            >
-              <Text style={{ color: theme.textSecondary, fontSize: 11 }}>Boarding</Text>
-              <Text style={{ color: theme.text, fontWeight: "700", fontSize: 13 }} numberOfLines={1}>
-                {boardStop?.location_name ?? "Select"}
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={() => setStopPickerMode("to")}
-              style={[styles.stopField, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}
-            >
-              <Text style={{ color: theme.textSecondary, fontSize: 11 }}>Drop-off</Text>
-              <Text style={{ color: theme.text, fontWeight: "700", fontSize: 13 }} numberOfLines={1}>
-                {dropStop?.location_name ?? "Select"}
-              </Text>
-            </Pressable>
-          </View>
-        )}
-
         {error && (
           <View style={{ marginTop: Spacing.three }}>
             <Banner tone="error" message={error} />
@@ -435,21 +412,40 @@ export default function TripDetailScreen() {
       </ScrollView>
 
       <View style={[styles.footer, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-        <View>
-          <Text style={{ color: theme.textSecondary, fontSize: 12 }}>
-            {selected.size > 0 ? [...selected].join(", ") : "No seats selected"}
-          </Text>
-          <Text style={{ color: theme.brand, fontWeight: "800", fontSize: 18 }}>
-            LKR {total.toLocaleString("en-LK")}
-          </Text>
+        {stops.length > 0 && (
+          <View style={[styles.footerStopsRow, { borderBottomColor: theme.border }]}>
+            <Pressable onPress={() => setStopPickerMode("from")} style={styles.stopField}>
+              <Text style={{ color: theme.textSecondary, fontSize: 11 }}>Boarding</Text>
+              <Text style={{ color: theme.text, fontWeight: "700", fontSize: 13 }} numberOfLines={1}>
+                {boardStop?.location_name ?? "Select"}
+              </Text>
+            </Pressable>
+            <View style={[styles.footerStopsDivider, { backgroundColor: theme.border }]} />
+            <Pressable onPress={() => setStopPickerMode("to")} style={styles.stopField}>
+              <Text style={{ color: theme.textSecondary, fontSize: 11 }}>Drop-off</Text>
+              <Text style={{ color: theme.text, fontWeight: "700", fontSize: 13 }} numberOfLines={1}>
+                {dropStop?.location_name ?? "Select"}
+              </Text>
+            </Pressable>
+          </View>
+        )}
+        <View style={styles.footerSummaryRow}>
+          <View>
+            <Text style={{ color: theme.textSecondary, fontSize: 12 }}>
+              {selected.size > 0 ? [...selected].join(", ") : "No seats selected"}
+            </Text>
+            <Text style={{ color: theme.brand, fontWeight: "800", fontSize: 18 }}>
+              LKR {total.toLocaleString("en-LK")}
+            </Text>
+          </View>
+          <Pressable
+            onPress={handleContinue}
+            disabled={selected.size === 0 || busy}
+            style={[styles.continueButton, { backgroundColor: theme.brand, opacity: selected.size === 0 || busy ? 0.6 : 1 }]}
+          >
+            {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.continueText}>Continue</Text>}
+          </Pressable>
         </View>
-        <Pressable
-          onPress={handleContinue}
-          disabled={selected.size === 0 || busy}
-          style={[styles.continueButton, { backgroundColor: theme.brand, opacity: selected.size === 0 || busy ? 0.6 : 1 }]}
-        >
-          {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.continueText}>Continue</Text>}
-        </Pressable>
       </View>
 
       <Modal visible={!!genderPromptSeat} transparent animationType="fade" onRequestClose={() => setGenderPromptSeat(null)}>
@@ -634,17 +630,21 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
+    borderTopWidth: 1,
+  },
+  footerStopsRow: { flexDirection: "row", alignItems: "center", borderBottomWidth: 1 },
+  footerStopsDivider: { width: 1, alignSelf: "stretch", marginVertical: Spacing.two },
+  footerSummaryRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     padding: Spacing.three,
-    borderTopWidth: 1,
   },
   continueButton: { borderRadius: 12, paddingVertical: 12, paddingHorizontal: 24 },
   continueText: { color: "#fff", fontWeight: "700", fontSize: 16 },
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center" },
   genderSheet: { borderRadius: 16, padding: Spacing.four, width: 260 },
-  stopField: { flex: 1, borderWidth: 1, borderRadius: 12, padding: Spacing.three },
+  stopField: { flex: 1, padding: Spacing.three },
   stopPickerSheet: {
     width: "100%",
     borderTopLeftRadius: 20,
