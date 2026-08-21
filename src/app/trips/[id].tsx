@@ -58,6 +58,7 @@ export default function TripDetailScreen() {
   const [genders, setGenders] = useState<Map<string, "male" | "female">>(new Map());
   const [genderPromptSeat, setGenderPromptSeat] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [stopPickerMode, setStopPickerMode] = useState<"from" | "to" | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -112,6 +113,17 @@ export default function TripDetailScreen() {
     (to && stops.some((s) => s.route_stop_id === to) ? to : stops[stops.length - 1]?.route_stop_id) ?? "";
   const boardStop = stops.find((s) => s.route_stop_id === fromStopId);
   const dropStop = stops.find((s) => s.route_stop_id === toStopId);
+  const boardableStops = stops.filter((s) => s.can_board);
+  const droppableStops = stops.filter((s) => s.can_drop);
+
+  // Updates the actual from/to route params (not just local state) so every
+  // other read of from/to — fare lookup, handleContinue, shareTrip — stays
+  // in sync with whatever the passenger picks here.
+  function pickStop(routeStopId: string) {
+    if (stopPickerMode === "from") router.setParams({ from: routeStopId, to: toStopId });
+    else if (stopPickerMode === "to") router.setParams({ from: fromStopId, to: routeStopId });
+    setStopPickerMode(null);
+  }
 
   function seatKind(label: string): "available" | "selected" | "male" | "female" | "pending" | "blocked" {
     if (selected.has(label)) return "selected";
@@ -392,6 +404,29 @@ export default function TripDetailScreen() {
           ))}
         </View>
 
+        {stops.length > 0 && (
+          <View style={{ flexDirection: "row", gap: Spacing.two, marginTop: Spacing.three }}>
+            <Pressable
+              onPress={() => setStopPickerMode("from")}
+              style={[styles.stopField, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}
+            >
+              <Text style={{ color: theme.textSecondary, fontSize: 11 }}>Boarding</Text>
+              <Text style={{ color: theme.text, fontWeight: "700", fontSize: 13 }} numberOfLines={1}>
+                {boardStop?.location_name ?? "Select"}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setStopPickerMode("to")}
+              style={[styles.stopField, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}
+            >
+              <Text style={{ color: theme.textSecondary, fontSize: 11 }}>Drop-off</Text>
+              <Text style={{ color: theme.text, fontWeight: "700", fontSize: 13 }} numberOfLines={1}>
+                {dropStop?.location_name ?? "Select"}
+              </Text>
+            </Pressable>
+          </View>
+        )}
+
         {error && (
           <View style={{ marginTop: Spacing.three }}>
             <Banner tone="error" message={error} />
@@ -438,6 +473,43 @@ export default function TripDetailScreen() {
               </Pressable>
             </View>
           </View>
+        </Pressable>
+      </Modal>
+
+      <Modal
+        visible={!!stopPickerMode}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setStopPickerMode(null)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setStopPickerMode(null)}>
+          <Pressable
+            style={[styles.stopPickerSheet, { backgroundColor: theme.backgroundElement }]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Text style={{ color: theme.text, fontWeight: "800", fontSize: 15, marginBottom: Spacing.three }}>
+              {stopPickerMode === "from" ? "Boarding stop" : "Drop-off stop"}
+            </Text>
+            <ScrollView style={{ maxHeight: 320 }}>
+              {(stopPickerMode === "from" ? boardableStops : droppableStops).map((s) => {
+                const selected = stopPickerMode === "from" ? s.route_stop_id === fromStopId : s.route_stop_id === toStopId;
+                const disabled = stopPickerMode === "from" ? s.seq >= (dropStop?.seq ?? Infinity) : s.seq <= (boardStop?.seq ?? -Infinity);
+                return (
+                  <Pressable
+                    key={s.route_stop_id}
+                    disabled={disabled}
+                    onPress={() => pickStop(s.route_stop_id)}
+                    style={[styles.stopPickRow, { borderColor: theme.border, opacity: disabled ? 0.4 : 1 }]}
+                  >
+                    <Text style={{ color: theme.text, fontWeight: selected ? "800" : "500", fontSize: 14 }}>
+                      {s.location_name}
+                    </Text>
+                    {selected && <Ionicons name="checkmark" size={18} color={theme.brand} />}
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </Pressable>
         </Pressable>
       </Modal>
     </View>
@@ -572,5 +644,21 @@ const styles = StyleSheet.create({
   continueText: { color: "#fff", fontWeight: "700", fontSize: 16 },
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center" },
   genderSheet: { borderRadius: 16, padding: Spacing.four, width: 260 },
+  stopField: { flex: 1, borderWidth: 1, borderRadius: 12, padding: Spacing.three },
+  stopPickerSheet: {
+    width: "100%",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: Spacing.four,
+    position: "absolute",
+    bottom: 0,
+  },
+  stopPickRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderBottomWidth: 1,
+    paddingVertical: 14,
+  },
   genderButton: { flex: 1, borderWidth: 2, borderRadius: 12, paddingVertical: 12, alignItems: "center" },
 });
