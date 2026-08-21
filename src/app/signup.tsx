@@ -225,19 +225,6 @@ export default function SignUpScreen() {
                     </Text>
                   )}
                 </Pressable>
-                <Pressable
-                  onPress={() => setStage("details")}
-                  style={{ marginTop: Spacing.three, alignItems: "center" }}
-                >
-                  <Text
-                    style={{
-                      color: theme.textSecondary,
-                      textDecorationLine: "underline",
-                    }}
-                  >
-                    Edit details
-                  </Text>
-                </Pressable>
               </>
             )}
 
