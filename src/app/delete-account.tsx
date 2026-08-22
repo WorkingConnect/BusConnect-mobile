@@ -27,9 +27,11 @@ import { Spacing } from "@/constants/theme";
  * identifying fields are scrubbed and the account is banned from signing
  * back in. Blocked outright if the account has any booking history at all
  * (real financial history, not something an anonymize pass can paper over —
- * the API returns a 409 with a message this screen just surfaces as-is). If
- * there's no booking history but a wallet balance, deleting cashes it out as
- * a refund admin sends by bank transfer, confirmed by SMS once processed.
+ * the API returns a 409 with a message this screen just surfaces as-is), or
+ * if this same login is also used for an operator dashboard or pilot app
+ * account (deleting would lock them out of those too). If there's no
+ * booking history but a wallet balance, deleting cashes it out as a refund
+ * admin sends by bank transfer, confirmed by SMS once processed.
  *
  * Re-verification before something this destructive: if the account has a
  * phone number on file, send a fresh OTP and require it (proves whoever's
