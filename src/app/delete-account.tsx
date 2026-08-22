@@ -23,9 +23,13 @@ import { Spacing } from "@/constants/theme";
 
 /**
  * Deleting is really "deactivate + anonymize" server-side (see
- * BusConnect-api's DELETE /me/account) — booking/payment history survives,
- * only the passenger's own identifying fields are scrubbed and the account
- * is banned from signing back in.
+ * BusConnect-api's DELETE /me/account) — only the passenger's own
+ * identifying fields are scrubbed and the account is banned from signing
+ * back in. Blocked outright if the account has any booking history at all
+ * (real financial history, not something an anonymize pass can paper over —
+ * the API returns a 409 with a message this screen just surfaces as-is). If
+ * there's no booking history but a wallet balance, deleting cashes it out as
+ * a refund admin sends by bank transfer, confirmed by SMS once processed.
  *
  * Re-verification before something this destructive: if the account has a
  * phone number on file, send a fresh OTP and require it (proves whoever's
@@ -93,7 +97,7 @@ export default function DeleteAccountScreen() {
   function confirmAndDelete() {
     Alert.alert(
       "Delete your account?",
-      "This permanently removes your name, email, phone and NIC from BusConnect, and you won't be able to sign in again. Your booking and payment history is kept for records.",
+      "This permanently removes your name, email, phone and NIC from BusConnect, and you won't be able to sign in again. Any wallet balance is queued for a refund by bank transfer.",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -120,8 +124,9 @@ export default function DeleteAccountScreen() {
         <Ionicons name="trash-outline" size={26} color="#dc2626" />
       </View>
       <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-        This will permanently remove your personal details. Booking and payment history is kept for records and
-        can&apos;t be recovered afterwards.
+        Accounts with any booking history can&apos;t be deleted — contact support if you need that removed. If you
+        have no bookings but still have a wallet balance, deleting your account queues it for a refund by bank
+        transfer; you&apos;ll get an SMS once it&apos;s sent.
       </Text>
 
       <View style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>

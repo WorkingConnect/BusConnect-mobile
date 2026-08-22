@@ -436,7 +436,7 @@ export function updateMyProfile(
 }
 
 export function deleteMyAccount(accessToken: string) {
-  return request<{ ok: boolean }>("/me/account", {
+  return request<{ ok: boolean; walletRefunded: number }>("/me/account", {
     method: "DELETE",
     accessToken,
   });
