@@ -72,17 +72,10 @@ export async function listMyBookings(): Promise<MyBooking[]> {
   if (error) throw error;
   const rows = (data ?? []) as unknown as BookingRow[];
 
-  // A confirmed booking whose trip has arrived and whose ticket was fully
-  // scanned at boarding has nothing left to show a passenger — no QR to
-  // present, no trip to track. Hidden here only; the row stays in the
-  // database untouched (revenue/refund/payout math still reads it).
-  const visible = rows.filter((b) => {
-    if (b.status !== "confirmed") return true;
-    const ticket = b.tickets?.[0];
-    return !(b.trip?.status === "arrived" && ticket?.status === "used");
-  });
-
-  return visible.map((b) => {
+  // Arrived+boarded bookings used to be hidden here once fully scanned.
+  // They now stay visible as trip history so a passenger can rate the trip
+  // — see the reviews feature.
+  return rows.map((b) => {
     const ticket = b.tickets?.[0];
     return {
       id: b.id,

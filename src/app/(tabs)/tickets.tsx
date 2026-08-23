@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -6,6 +6,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -15,8 +16,9 @@ import { router, useFocusEffect } from "expo-router";
 import { useTheme } from "@/hooks/use-theme";
 import { useAuth } from "@/lib/auth";
 import { listMyBookings, type MyBooking } from "@/lib/tickets";
-import { hideBooking, ApiError } from "@/lib/api";
+import { hideBooking, getMyReview, submitReview, ApiError } from "@/lib/api";
 import { Banner } from "@/components/banner";
+import { StarRatingInput } from "@/components/star-rating-input";
 import { Spacing, BottomTabInset } from "@/constants/theme";
 
 type Tab = "confirmed" | "cancelled";
@@ -258,6 +260,7 @@ function TicketCard({
   const [open, setOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const boarded = b.ticketStatus === "used";
+  const arrived = b.tripStatus === "arrived";
 
   function confirmDelete() {
     Alert.alert(
@@ -347,8 +350,15 @@ function TicketCard({
           <Stat label="Booked on" value={dateOnly(b.createdAt)} theme={theme} />
         </View>
 
-        <View style={{ marginTop: Spacing.three }}>
-          {t === "confirmed" && b.qrSignature ? (
+        <View style={{ marginTop: Spacing.three, gap: Spacing.two }}>
+          {t === "confirmed" && arrived && (
+            <RateTripButton
+              tripId={b.tripId}
+              accessToken={accessToken}
+              theme={theme}
+            />
+          )}
+          {t === "confirmed" && !arrived && b.qrSignature ? (
             <View style={styles.actionRow}>
               <Pressable
                 onPress={() => setOpen((v) => !v)}
@@ -437,6 +447,140 @@ function TicketCard({
             </Text>
           </View>
         )}
+      </View>
+    </View>
+  );
+}
+
+type RateState = "loading" | "idle" | "open" | "busy" | "rated";
+
+function RateTripButton({
+  tripId,
+  accessToken,
+  theme,
+}: {
+  tripId: string;
+  accessToken: string;
+  theme: ReturnType<typeof useTheme>;
+}) {
+  const [state, setState] = useState<RateState>("loading");
+  const [rating, setRating] = useState(0);
+  const [text, setText] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getMyReview(accessToken, tripId)
+      .then((existing) => {
+        if (cancelled) return;
+        if (existing) {
+          setRating(existing.rating);
+          setState("rated");
+        } else {
+          setState("idle");
+        }
+      })
+      .catch(() => !cancelled && setState("idle"));
+    return () => {
+      cancelled = true;
+    };
+  }, [tripId, accessToken]);
+
+  function submit() {
+    setError(null);
+    setState("busy");
+    submitReview(accessToken, { tripId, rating, text: text.trim() || undefined })
+      .then(() => setState("rated"))
+      .catch((e) => {
+        setError(e instanceof ApiError ? e.message : "Could not submit your rating. Try again.");
+        setState("open");
+      });
+  }
+
+  if (state === "loading") return null;
+
+  if (state === "rated") {
+    return (
+      <View
+        style={[
+          styles.secondaryButton,
+          { borderColor: theme.border, flex: 0, alignSelf: "flex-start", gap: 8 },
+        ]}
+      >
+        <StarRatingInput value={rating} size={15} />
+        <Text style={{ color: theme.textSecondary, fontWeight: "600", fontSize: 13 }}>
+          Rated
+        </Text>
+      </View>
+    );
+  }
+
+  if (state === "idle") {
+    return (
+      <Pressable
+        onPress={() => setState("open")}
+        style={[styles.primaryButton, { backgroundColor: theme.brand, flex: 0, alignSelf: "flex-start", paddingHorizontal: Spacing.three }]}
+      >
+        <Text style={styles.primaryButtonText}>Rate this trip</Text>
+      </Pressable>
+    );
+  }
+
+  return (
+    <View
+      style={[
+        styles.card,
+        { backgroundColor: theme.background, borderColor: theme.border, padding: Spacing.three },
+      ]}
+    >
+      <Text style={{ color: theme.text, fontWeight: "700", fontSize: 14 }}>How was your trip?</Text>
+      <View style={{ marginTop: Spacing.two }}>
+        <StarRatingInput value={rating} onChange={setRating} disabled={state === "busy"} />
+      </View>
+      <TextInput
+        value={text}
+        onChangeText={setText}
+        editable={state !== "busy"}
+        maxLength={1000}
+        placeholder="Add a comment (optional)"
+        placeholderTextColor={theme.textSecondary}
+        multiline
+        style={{
+          marginTop: Spacing.three,
+          borderWidth: 1,
+          borderColor: theme.border,
+          borderRadius: 10,
+          padding: Spacing.two,
+          color: theme.text,
+          minHeight: 60,
+          textAlignVertical: "top",
+        }}
+      />
+      {error && (
+        <Text style={{ color: "#dc2626", fontSize: 13, marginTop: Spacing.two }}>{error}</Text>
+      )}
+      <View style={[styles.actionRow, { marginTop: Spacing.three }]}>
+        <Pressable
+          onPress={submit}
+          disabled={rating === 0 || state === "busy"}
+          style={[
+            styles.primaryButton,
+            { backgroundColor: theme.brand, opacity: rating === 0 || state === "busy" ? 0.6 : 1 },
+          ]}
+        >
+          {state === "busy" ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <Text style={styles.primaryButtonText}>Submit rating</Text>
+          )}
+        </Pressable>
+        <Pressable
+          onPress={() => setState("idle")}
+          disabled={state === "busy"}
+          style={[styles.secondaryButton, { borderColor: theme.border }]}
+        >
+          <Text style={{ color: theme.text, fontWeight: "600", fontSize: 13 }}>Cancel</Text>
+        </Pressable>
       </View>
     </View>
   );

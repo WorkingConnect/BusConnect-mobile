@@ -352,6 +352,27 @@ export function hideBooking(accessToken: string, id: string) {
   });
 }
 
+export interface ReviewResult {
+  id: string;
+  rating: number;
+  text: string | null;
+  created_at: string;
+}
+
+/** Rate a completed (arrived) trip, 1-5 stars with optional text. */
+export function submitReview(accessToken: string, body: { tripId: string; rating: number; text?: string }) {
+  return request<ReviewResult>("/reviews", {
+    method: "POST",
+    body: JSON.stringify(body),
+    accessToken,
+  });
+}
+
+/** Returns the passenger's own review for this trip, or null if not yet rated. */
+export function getMyReview(accessToken: string, tripId: string) {
+  return request<ReviewResult | null>(`/reviews/mine?tripId=${tripId}`, { accessToken });
+}
+
 export function checkoutBooking(accessToken: string, bookingId: string) {
   return request<MpgsCheckoutSession>(`/bookings/${bookingId}/pay`, {
     method: "POST",
