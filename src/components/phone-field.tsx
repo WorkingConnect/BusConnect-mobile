@@ -1,8 +1,9 @@
-import { StyleSheet, Text, TextInput, View } from "react-native";
+import { StyleSheet, TextInput, View } from "react-native";
+import { Text } from "@/components/ui/text";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/use-theme";
 import { PHONE_COUNTRY_CODE } from "@/lib/phone";
-import { Spacing } from "@/constants/theme";
+import { BrandFonts, Spacing } from "@/constants/theme";
 
 /** Phone input with a fixed +94 country-code badge — the user only ever
  *  types the local 9-digit number. `value`/`onChangeText` deal in local
@@ -47,6 +48,17 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: Spacing.three,
   },
-  code: { fontSize: 16, fontWeight: "600", paddingRight: Spacing.two, borderRightWidth: StyleSheet.hairlineWidth },
-  input: { flex: 1, paddingVertical: Spacing.three, fontSize: 16 },
+  code: {
+    fontFamily: BrandFonts.uiSemiBold,
+    fontSize: 16,
+    fontWeight: "600",
+    paddingRight: Spacing.two,
+    borderRightWidth: StyleSheet.hairlineWidth,
+  },
+  input: {
+    fontFamily: BrandFonts.uiRegular,
+    flex: 1,
+    paddingVertical: Spacing.three,
+    fontSize: 16,
+  },
 });

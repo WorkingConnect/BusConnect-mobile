@@ -4,10 +4,10 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from "react-native";
+import { Text } from "@/components/ui/text";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import {
@@ -19,7 +19,7 @@ import { router } from "expo-router";
 import { useTheme } from "@/hooks/use-theme";
 import { useAuth } from "@/lib/auth";
 import { topupWallet, ApiError, type MpgsCheckoutSession } from "@/lib/api";
-import { Spacing } from "@/constants/theme";
+import { BrandFonts, Spacing } from "@/constants/theme";
 
 const PRESET_AMOUNTS = [500, 1000, 1500, 2000, 5000];
 const MIN_AMOUNT = 500;
@@ -229,7 +229,12 @@ export default function WalletTopupScreen() {
           ]}
         >
           <Text
-            style={{ color: theme.textSecondary, fontSize: 16, marginRight: 6 }}
+            style={{
+              fontFamily: BrandFonts.uiRegular,
+              color: theme.textSecondary,
+              fontSize: 16,
+              marginRight: 6,
+            }}
           >
             LKR
           </Text>
@@ -260,6 +265,7 @@ export default function WalletTopupScreen() {
               >
                 <Text
                   style={{
+                    fontFamily: BrandFonts.uiSemiBold,
                     color: active ? theme.brand : theme.text,
                     fontWeight: "700",
                     fontSize: 13,
@@ -309,6 +315,7 @@ export default function WalletTopupScreen() {
           <Ionicons name="card-outline" size={28} color={theme.brand} />
           <Text
             style={{
+              fontFamily: BrandFonts.uiSemiBold,
               color: theme.brand,
               fontWeight: "700",
               fontSize: 15,
@@ -352,6 +359,7 @@ const styles = StyleSheet.create({
   },
   backButton: { width: 32 },
   heroTitle: {
+    fontFamily: BrandFonts.headingSemiBold,
     fontSize: 18,
     fontWeight: "800",
     color: "#fff",
@@ -364,6 +372,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: { padding: Spacing.four, paddingBottom: Spacing.six },
   sectionLabel: {
+    fontFamily: BrandFonts.headingSemiBold,
     fontSize: 12,
     fontWeight: "700",
     textTransform: "uppercase",
@@ -379,6 +388,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.two,
   },
   amountInput: {
+    fontFamily: BrandFonts.uiSemiBold,
     flex: 1,
     fontSize: 20,
     fontWeight: "700",
@@ -411,5 +421,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: Spacing.five,
   },
-  submitButtonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  submitButtonText: {
+    fontFamily: BrandFonts.uiSemiBold,
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 16,
+  },
 });

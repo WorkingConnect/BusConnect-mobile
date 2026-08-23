@@ -1,9 +1,10 @@
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, StyleSheet, View } from "react-native";
+import { Text } from "@/components/ui/text";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useTheme } from "@/hooks/use-theme";
-import { Spacing } from "@/constants/theme";
+import { BrandFonts, Spacing } from "@/constants/theme";
 
 export default function PaymentMethodsScreen() {
   const theme = useTheme();
@@ -55,6 +56,7 @@ export default function PaymentMethodsScreen() {
           <Ionicons name="card-outline" size={28} color={theme.brand} />
           <Text
             style={{
+              fontFamily: BrandFonts.uiSemiBold,
               color: theme.brand,
               fontWeight: "700",
               fontSize: 15,
@@ -86,6 +88,7 @@ const styles = StyleSheet.create({
   },
   backButton: { width: 32 },
   heroTitle: {
+    fontFamily: BrandFonts.headingSemiBold,
     fontSize: 18,
     fontWeight: "800",
     color: "#fff",
@@ -93,6 +96,7 @@ const styles = StyleSheet.create({
   },
   content: { padding: Spacing.four },
   sectionLabel: {
+    fontFamily: BrandFonts.headingSemiBold,
     fontSize: 12,
     fontWeight: "700",
     textTransform: "uppercase",

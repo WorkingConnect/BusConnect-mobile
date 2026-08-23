@@ -4,9 +4,9 @@ import {
   Image,
   Pressable,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
+import { Text } from "@/components/ui/text";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import {
@@ -28,7 +28,7 @@ import {
   type MpgsCheckoutSession,
   type Wallet,
 } from "@/lib/api";
-import { Spacing } from "@/constants/theme";
+import { BrandFonts, Spacing } from "@/constants/theme";
 
 function formatLkr(amount: number) {
   return `LKR ${amount.toLocaleString("en-LK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -399,10 +399,24 @@ export default function CheckoutScreen() {
               <View style={[styles.dashedDivider, { borderColor: theme.border }]} />
 
               <View style={styles.summaryRow}>
-                <Text style={{ color: theme.text, fontWeight: "800", fontSize: 16 }}>
+                <Text
+                  style={{
+                    fontFamily: BrandFonts.headingSemiBold,
+                    color: theme.text,
+                    fontWeight: "800",
+                    fontSize: 16,
+                  }}
+                >
                   Amount due
                 </Text>
-                <Text style={{ color: theme.brand, fontWeight: "800", fontSize: 16 }}>
+                <Text
+                  style={{
+                    fontFamily: BrandFonts.headingSemiBold,
+                    color: theme.brand,
+                    fontWeight: "800",
+                    fontSize: 16,
+                  }}
+                >
                   {formatLkr(booking.amount * (1 + convenienceFeePct / 100))}
                 </Text>
               </View>
@@ -458,7 +472,12 @@ export default function CheckoutScreen() {
             <Ionicons name="wallet-outline" size={20} color={theme.brand} />
             <View style={{ flex: 1 }}>
               <Text
-                style={{ color: theme.text, fontWeight: "700", fontSize: 15 }}
+                style={{
+                  fontFamily: BrandFonts.uiSemiBold,
+                  color: theme.text,
+                  fontWeight: "700",
+                  fontSize: 15,
+                }}
               >
                 Pay from wallet
               </Text>
@@ -491,7 +510,12 @@ export default function CheckoutScreen() {
             <Ionicons name="card-outline" size={20} color={theme.brand} />
             <View style={{ flex: 1 }}>
               <Text
-                style={{ color: theme.text, fontWeight: "700", fontSize: 15 }}
+                style={{
+                  fontFamily: BrandFonts.uiSemiBold,
+                  color: theme.text,
+                  fontWeight: "700",
+                  fontSize: 15,
+                }}
               >
                 Pay with card
               </Text>
@@ -545,7 +569,13 @@ export default function CheckoutScreen() {
 
             <View style={styles.summaryRow}>
               <Text style={{ color: theme.textSecondary }}>Amount to pay</Text>
-              <Text style={{ color: theme.brand, fontWeight: "800" }}>
+              <Text
+                style={{
+                  fontFamily: BrandFonts.headingSemiBold,
+                  color: theme.brand,
+                  fontWeight: "800",
+                }}
+              >
                 {formatLkr(totalWithFee)}
               </Text>
             </View>
@@ -571,7 +601,13 @@ export default function CheckoutScreen() {
           </Pressable>
 
           <Pressable onPress={() => setStage("choose")} style={styles.backLink}>
-            <Text style={{ color: theme.textSecondary, fontWeight: "600" }}>
+            <Text
+              style={{
+                fontFamily: BrandFonts.uiSemiBold,
+                color: theme.textSecondary,
+                fontWeight: "600",
+              }}
+            >
               Choose a different payment method
             </Text>
           </Pressable>
@@ -650,6 +686,7 @@ const styles = StyleSheet.create({
   },
   backButton: { width: 32 },
   heroTitle: {
+    fontFamily: BrandFonts.headingSemiBold,
     fontSize: 18,
     fontWeight: "800",
     color: "#fff",
@@ -661,8 +698,9 @@ const styles = StyleSheet.create({
     marginTop: Spacing.one,
   },
   chooseContainer: { flex: 1, padding: Spacing.four },
-  amountLabel: { fontSize: 13, textAlign: "center" },
+  amountLabel: { fontFamily: BrandFonts.uiRegular, fontSize: 13, textAlign: "center" },
   amountValue: {
+    fontFamily: BrandFonts.headingSemiBold,
     fontSize: 32,
     fontWeight: "800",
     textAlign: "center",
@@ -685,7 +723,12 @@ const styles = StyleSheet.create({
     padding: Spacing.four,
     marginBottom: Spacing.four,
   },
-  summaryTitle: { fontSize: 16, fontWeight: "800", marginBottom: Spacing.three },
+  summaryTitle: {
+    fontFamily: BrandFonts.headingSemiBold,
+    fontSize: 16,
+    fontWeight: "800",
+    marginBottom: Spacing.three,
+  },
   operatorRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -696,7 +739,7 @@ const styles = StyleSheet.create({
   operatorLogoFallback: { alignItems: "center", justifyContent: "center" },
   operatorName: { fontSize: 15, fontWeight: "700" },
   routeRow: { flexDirection: "row", alignItems: "center", gap: Spacing.three },
-  routeLabel: { fontSize: 11, marginBottom: 2 },
+  routeLabel: { fontFamily: BrandFonts.uiRegular, fontSize: 11, marginBottom: 2 },
   routeValue: { fontSize: 14, fontWeight: "700" },
   routeLine: { flexDirection: "row", alignItems: "center", width: 40 },
   routeDash: { flex: 1, borderTopWidth: 1, borderStyle: "dashed" },
@@ -711,14 +754,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.two,
     paddingVertical: 6,
   },
-  chipText: { fontSize: 12, fontWeight: "600" },
+  chipText: { fontFamily: BrandFonts.uiSemiBold, fontSize: 12, fontWeight: "600" },
   detailsGrid: { marginTop: Spacing.one, gap: Spacing.three },
   detailsRow: { flexDirection: "row" },
   detailCell: { flex: 1, gap: 2 },
-  detailLabel: { fontSize: 11 },
+  detailLabel: { fontFamily: BrandFonts.uiRegular, fontSize: 11 },
   detailValue: { fontSize: 14, fontWeight: "700" },
-  summaryLabel: { fontSize: 12 },
-  summaryValue: { fontSize: 26, fontWeight: "800", marginTop: 2 },
+  summaryLabel: { fontFamily: BrandFonts.uiRegular, fontSize: 12 },
+  summaryValue: {
+    fontFamily: BrandFonts.headingSemiBold,
+    fontSize: 26,
+    fontWeight: "800",
+    marginTop: 2,
+  },
   dashedDivider: {
     borderTopWidth: 1,
     borderStyle: "dashed",
@@ -730,7 +778,12 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingVertical: Spacing.four,
   },
-  payButtonLabel: { color: "#fff", fontWeight: "800", fontSize: 16 },
+  payButtonLabel: {
+    fontFamily: BrandFonts.uiSemiBold,
+    color: "#fff",
+    fontWeight: "800",
+    fontSize: 16,
+  },
   backLink: { alignItems: "center", paddingVertical: Spacing.three, marginTop: Spacing.two },
   holdTimerRow: {
     flexDirection: "row",

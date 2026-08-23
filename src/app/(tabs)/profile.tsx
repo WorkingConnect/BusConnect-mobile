@@ -8,10 +8,10 @@ import {
   ScrollView,
   StyleSheet,
   Switch,
-  Text,
   TextInput,
   View,
 } from "react-native";
+import { Text } from "@/components/ui/text";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -37,7 +37,7 @@ import {
 } from "@/lib/push-notifications";
 import { openStoreReview, openWhatsAppSupport } from "@/lib/app-links";
 import { Banner } from "@/components/banner";
-import { Spacing, BottomTabInset } from "@/constants/theme";
+import { Spacing, BottomTabInset, BrandFonts } from "@/constants/theme";
 
 export default function ProfileScreen() {
   const theme = useTheme();
@@ -695,6 +695,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.15)",
   },
   heroName: {
+    fontFamily: BrandFonts.headingSemiBold,
     fontSize: 19,
     fontWeight: "800",
     color: "#fff",
@@ -716,7 +717,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
-  cardTitle: { fontSize: 15, fontWeight: "700" },
+  cardTitle: { fontFamily: BrandFonts.headingSemiBold, fontSize: 15, fontWeight: "700" },
   editLink: { flexDirection: "row", alignItems: "center", gap: 4 },
   editActionsRow: {
     flexDirection: "row",
@@ -744,6 +745,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
   },
   sectionLabel: {
+    fontFamily: BrandFonts.uiSemiBold,
     fontSize: 12,
     fontWeight: "700",
     textTransform: "uppercase",
@@ -752,6 +754,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.two,
   },
   fieldLabel: {
+    fontFamily: BrandFonts.uiSemiBold,
     fontSize: 12,
     fontWeight: "600",
     textTransform: "uppercase",
@@ -759,6 +762,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   input: {
+    fontFamily: BrandFonts.uiRegular,
     borderWidth: 1,
     borderRadius: 12,
     padding: Spacing.three,
@@ -770,7 +774,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: Spacing.four,
   },
-  saveButtonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  saveButtonText: { fontFamily: BrandFonts.uiSemiBold, color: "#fff", fontWeight: "700", fontSize: 16 },
   segmentRow: { flexDirection: "row", gap: Spacing.two },
   segment: {
     flex: 1,
@@ -805,5 +809,5 @@ const styles = StyleSheet.create({
     marginHorizontal: Spacing.four,
     marginTop: Spacing.three,
   },
-  dangerButtonText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  dangerButtonText: { fontFamily: BrandFonts.uiSemiBold, color: "#fff", fontWeight: "700", fontSize: 15 },
 });

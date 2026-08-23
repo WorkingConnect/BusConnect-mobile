@@ -7,9 +7,9 @@ import {
   ScrollView,
   Share,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
+import { Text } from "@/components/ui/text";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, router } from "expo-router";
@@ -31,7 +31,7 @@ import {
 } from "@/lib/api";
 import { layoutToGrid } from "@/lib/seat-layout";
 import { Banner } from "@/components/banner";
-import { Spacing } from "@/constants/theme";
+import { Spacing, BrandFonts } from "@/constants/theme";
 
 function formatTripTime(iso: string) {
   return new Date(iso).toLocaleTimeString("en-LK", { hour: "2-digit", minute: "2-digit" });
@@ -275,9 +275,15 @@ export default function TripDetailScreen() {
         >
           <Text style={[styles.journeyTitle, { color: theme.text }]}>Your journey</Text>
           {boardStop && dropStop && (
-            <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 4 }}>
-              Boarding at <Text style={{ fontWeight: "700", color: theme.text }}>{boardStop.location_name}</Text>,
-              dropping at <Text style={{ fontWeight: "700", color: theme.text }}>{dropStop.location_name}</Text>
+            <Text style={{ fontFamily: BrandFonts.uiRegular, color: theme.textSecondary, fontSize: 12, marginTop: 4 }}>
+              Boarding at{" "}
+              <Text style={{ fontFamily: BrandFonts.uiSemiBold, fontWeight: "700", color: theme.text }}>
+                {boardStop.location_name}
+              </Text>
+              , dropping at{" "}
+              <Text style={{ fontFamily: BrandFonts.uiSemiBold, fontWeight: "700", color: theme.text }}>
+                {dropStop.location_name}
+              </Text>
             </Text>
           )}
 
@@ -306,12 +312,16 @@ export default function TripDetailScreen() {
                       </Text>
                       {isBoard && (
                         <View style={[styles.stopTag, { backgroundColor: "#d1fae5" }]}>
-                          <Text style={{ color: "#047857", fontSize: 9, fontWeight: "700" }}>BOARD</Text>
+                          <Text style={{ fontFamily: BrandFonts.uiSemiBold, color: "#047857", fontSize: 9, fontWeight: "700" }}>
+                            BOARD
+                          </Text>
                         </View>
                       )}
                       {isDrop && (
                         <View style={[styles.stopTag, { backgroundColor: "#dbeafe" }]}>
-                          <Text style={{ color: "#1d4ed8", fontSize: 9, fontWeight: "700" }}>DROP</Text>
+                          <Text style={{ fontFamily: BrandFonts.uiSemiBold, color: "#1d4ed8", fontSize: 9, fontWeight: "700" }}>
+                            DROP
+                          </Text>
                         </View>
                       )}
                     </View>
@@ -330,7 +340,7 @@ export default function TripDetailScreen() {
               <View style={styles.amenitiesWrap}>
                 {trip.bus.amenities.map((a) => (
                   <View key={a} style={[styles.amenityChip, { backgroundColor: theme.backgroundSelected }]}>
-                    <Text style={{ color: theme.textSecondary, fontSize: 11 }}>{a}</Text>
+                    <Text style={{ fontFamily: BrandFonts.uiRegular, color: theme.textSecondary, fontSize: 11 }}>{a}</Text>
                   </View>
                 ))}
               </View>
@@ -349,7 +359,7 @@ export default function TripDetailScreen() {
 
           <View style={[styles.journeySection, styles.trustRow, { borderTopColor: theme.border }]}>
             <Ionicons name="shield-checkmark" size={15} color="#10b981" />
-            <Text style={{ color: theme.textSecondary, fontSize: 11 }}>
+            <Text style={{ fontFamily: BrandFonts.uiRegular, color: theme.textSecondary, fontSize: 11 }}>
               Secure checkout · Instant e-ticket · QR boarding
             </Text>
           </View>
@@ -390,6 +400,7 @@ export default function TripDetailScreen() {
                   >
                     <Text
                       style={{
+                        fontFamily: BrandFonts.uiSemiBold,
                         fontSize: 11,
                         fontWeight: "700",
                         color: kind === "available" ? theme.text : "#fff",
@@ -415,15 +426,21 @@ export default function TripDetailScreen() {
         {stops.length > 0 && (
           <View style={[styles.footerStopsRow, { borderBottomColor: theme.border }]}>
             <Pressable onPress={() => setStopPickerMode("from")} style={styles.stopField}>
-              <Text style={{ color: theme.textSecondary, fontSize: 11 }}>Boarding</Text>
-              <Text style={{ color: theme.text, fontWeight: "700", fontSize: 13 }} numberOfLines={1}>
+              <Text style={{ fontFamily: BrandFonts.uiRegular, color: theme.textSecondary, fontSize: 11 }}>Boarding</Text>
+              <Text
+                style={{ fontFamily: BrandFonts.uiSemiBold, color: theme.text, fontWeight: "700", fontSize: 13 }}
+                numberOfLines={1}
+              >
                 {boardStop?.location_name ?? "Select"}
               </Text>
             </Pressable>
             <View style={[styles.footerStopsDivider, { backgroundColor: theme.border }]} />
             <Pressable onPress={() => setStopPickerMode("to")} style={styles.stopField}>
-              <Text style={{ color: theme.textSecondary, fontSize: 11 }}>Drop-off</Text>
-              <Text style={{ color: theme.text, fontWeight: "700", fontSize: 13 }} numberOfLines={1}>
+              <Text style={{ fontFamily: BrandFonts.uiRegular, color: theme.textSecondary, fontSize: 11 }}>Drop-off</Text>
+              <Text
+                style={{ fontFamily: BrandFonts.uiSemiBold, color: theme.text, fontWeight: "700", fontSize: 13 }}
+                numberOfLines={1}
+              >
                 {dropStop?.location_name ?? "Select"}
               </Text>
             </Pressable>
@@ -431,10 +448,10 @@ export default function TripDetailScreen() {
         )}
         <View style={styles.footerSummaryRow}>
           <View>
-            <Text style={{ color: theme.textSecondary, fontSize: 12 }}>
+            <Text style={{ fontFamily: BrandFonts.uiRegular, color: theme.textSecondary, fontSize: 12 }}>
               {selected.size > 0 ? [...selected].join(", ") : "No seats selected"}
             </Text>
-            <Text style={{ color: theme.brand, fontWeight: "800", fontSize: 18 }}>
+            <Text style={{ fontFamily: BrandFonts.headingSemiBold, color: theme.brand, fontWeight: "800", fontSize: 18 }}>
               LKR {total.toLocaleString("en-LK")}
             </Text>
           </View>
@@ -451,7 +468,15 @@ export default function TripDetailScreen() {
       <Modal visible={!!genderPromptSeat} transparent animationType="fade" onRequestClose={() => setGenderPromptSeat(null)}>
         <Pressable style={styles.modalOverlay} onPress={() => setGenderPromptSeat(null)}>
           <View style={[styles.genderSheet, { backgroundColor: theme.backgroundElement }]}>
-            <Text style={{ color: theme.text, fontWeight: "700", marginBottom: Spacing.three, textAlign: "center" }}>
+            <Text
+              style={{
+                fontFamily: BrandFonts.uiSemiBold,
+                color: theme.text,
+                fontWeight: "700",
+                marginBottom: Spacing.three,
+                textAlign: "center",
+              }}
+            >
               Seat {genderPromptSeat}
             </Text>
             <View style={{ flexDirection: "row", gap: Spacing.two }}>
@@ -459,13 +484,15 @@ export default function TripDetailScreen() {
                 onPress={() => pickGender("male")}
                 style={[styles.genderButton, { borderColor: SEAT_COLOR.male }]}
               >
-                <Text style={{ color: SEAT_COLOR.male, fontWeight: "700" }}>Male</Text>
+                <Text style={{ fontFamily: BrandFonts.uiSemiBold, color: SEAT_COLOR.male, fontWeight: "700" }}>Male</Text>
               </Pressable>
               <Pressable
                 onPress={() => pickGender("female")}
                 style={[styles.genderButton, { borderColor: SEAT_COLOR.female }]}
               >
-                <Text style={{ color: SEAT_COLOR.female, fontWeight: "700" }}>Female</Text>
+                <Text style={{ fontFamily: BrandFonts.uiSemiBold, color: SEAT_COLOR.female, fontWeight: "700" }}>
+                  Female
+                </Text>
               </Pressable>
             </View>
           </View>
@@ -483,7 +510,15 @@ export default function TripDetailScreen() {
             style={[styles.stopPickerSheet, { backgroundColor: theme.backgroundElement }]}
             onPress={(e) => e.stopPropagation()}
           >
-            <Text style={{ color: theme.text, fontWeight: "800", fontSize: 15, marginBottom: Spacing.three }}>
+            <Text
+              style={{
+                fontFamily: BrandFonts.uiSemiBold,
+                color: theme.text,
+                fontWeight: "800",
+                fontSize: 15,
+                marginBottom: Spacing.three,
+              }}
+            >
               {stopPickerMode === "from" ? "Boarding stop" : "Drop-off stop"}
             </Text>
             <ScrollView style={{ maxHeight: 320 }}>
@@ -497,7 +532,14 @@ export default function TripDetailScreen() {
                     onPress={() => pickStop(s.route_stop_id)}
                     style={[styles.stopPickRow, { borderColor: theme.border, opacity: disabled ? 0.4 : 1 }]}
                   >
-                    <Text style={{ color: theme.text, fontWeight: selected ? "800" : "500", fontSize: 14 }}>
+                    <Text
+                      style={{
+                        fontFamily: selected ? BrandFonts.uiSemiBold : BrandFonts.uiMedium,
+                        color: theme.text,
+                        fontWeight: selected ? "800" : "500",
+                        fontSize: 14,
+                      }}
+                    >
                       {s.location_name}
                     </Text>
                     {selected && <Ionicons name="checkmark" size={18} color={theme.brand} />}
@@ -516,7 +558,7 @@ function LegendItem({ color, border, label }: { color: string; border?: string; 
   return (
     <View style={styles.legendItem}>
       <View style={[styles.legendSwatch, { backgroundColor: color, borderColor: border ?? color }]} />
-      <Text style={{ fontSize: 12, color: "#8a8f98" }}>{label}</Text>
+      <Text style={{ fontFamily: BrandFonts.uiRegular, fontSize: 12, color: "#8a8f98" }}>{label}</Text>
     </View>
   );
 }
@@ -540,7 +582,15 @@ function CrewBadge({
         </View>
       )}
       <View>
-        <Text style={{ color: theme.textSecondary, fontSize: 10, fontWeight: "700", textTransform: "uppercase" }}>
+        <Text
+          style={{
+            fontFamily: BrandFonts.uiSemiBold,
+            color: theme.textSecondary,
+            fontSize: 10,
+            fontWeight: "700",
+            textTransform: "uppercase",
+          }}
+        >
           {role}
         </Text>
         <Text style={{ color: theme.text, fontSize: 13, fontWeight: "600" }}>{member.name}</Text>
@@ -567,8 +617,16 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.one,
   },
   backButton: {},
-  heroTitle: { fontSize: 22, fontWeight: "800", color: "#fff", letterSpacing: -0.3, textAlign: "center" },
+  heroTitle: {
+    fontFamily: BrandFonts.headingSemiBold,
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#fff",
+    letterSpacing: -0.3,
+    textAlign: "center",
+  },
   heroSubtitle: {
+    fontFamily: BrandFonts.uiRegular,
     fontSize: 13,
     color: "rgba(255,255,255,0.85)",
     marginTop: Spacing.one,
@@ -590,21 +648,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
-  heroBadgeText: { color: "#fff", fontSize: 12, fontWeight: "600", textTransform: "capitalize" },
+  heroBadgeText: {
+    fontFamily: BrandFonts.uiSemiBold,
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "600",
+    textTransform: "capitalize",
+  },
   journeyCard: {
     marginTop: Spacing.three,
     borderWidth: 1,
     borderRadius: 16,
     padding: Spacing.three,
   },
-  journeyTitle: { fontSize: 15, fontWeight: "700" },
+  journeyTitle: { fontFamily: BrandFonts.headingSemiBold, fontSize: 15, fontWeight: "700" },
   stopRow: { flexDirection: "row", gap: Spacing.two },
   stopDotCol: { alignItems: "center", width: 14 },
   stopDot: { width: 10, height: 10, borderRadius: 5, borderWidth: 2 },
   stopLine: { width: 1, flex: 1, marginVertical: 3 },
   stopTag: { borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 },
   journeySection: { marginTop: Spacing.three, paddingTop: Spacing.three, borderTopWidth: StyleSheet.hairlineWidth },
-  journeySectionLabel: { fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5 },
+  journeySectionLabel: {
+    fontFamily: BrandFonts.uiSemiBold,
+    fontSize: 11,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
   amenitiesWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: Spacing.two },
   amenityChip: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
   trustRow: { flexDirection: "row", alignItems: "center", gap: Spacing.two },
@@ -612,6 +682,7 @@ const styles = StyleSheet.create({
   crewPhotoFallback: { alignItems: "center", justifyContent: "center", borderWidth: 1 },
   legend: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.three, marginTop: Spacing.three, marginBottom: Spacing.three },
   frontLabel: {
+    fontFamily: BrandFonts.uiSemiBold,
     textAlign: "center",
     fontSize: 11,
     fontWeight: "700",
@@ -641,7 +712,7 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
   },
   continueButton: { borderRadius: 12, paddingVertical: 12, paddingHorizontal: 24 },
-  continueText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  continueText: { fontFamily: BrandFonts.uiSemiBold, color: "#fff", fontWeight: "700", fontSize: 16 },
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center" },
   genderSheet: { borderRadius: 16, padding: Spacing.four, width: 260 },
   stopField: { flex: 1, padding: Spacing.three },

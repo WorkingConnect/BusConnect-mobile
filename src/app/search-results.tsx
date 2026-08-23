@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { ActivityIndicator, FlatList, Image, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, Image, Platform, Pressable, StyleSheet, View } from "react-native";
+import { Text } from "@/components/ui/text";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -8,7 +9,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { useThemeMode } from "@/lib/theme-mode-context";
 import { searchTrips, searchTripsByRoute, ApiError, type TripSearchResult } from "@/lib/api";
 import { Banner } from "@/components/banner";
-import { Spacing } from "@/constants/theme";
+import { Spacing, BrandFonts } from "@/constants/theme";
 
 // Date-only string in the device's local calendar day — NOT toISOString(),
 // which converts to UTC first and lands on the wrong day for anyone east of
@@ -42,12 +43,16 @@ function duration(depart: string, arrive: string) {
 export default function SearchResultsScreen() {
   const theme = useTheme();
   const { resolvedScheme } = useThemeMode();
-  const { from, to, routeCardId, routeId, date } = useLocalSearchParams<{
+  const { from, to, routeCardId, routeId, date, operator } = useLocalSearchParams<{
     from?: string;
     to?: string;
     routeCardId?: string;
     routeId?: string;
     date: string;
+    /** Pre-selects the operator filter — set when arriving from an
+     *  operator's own "routes we run" list, so results start scoped to
+     *  that operator. */
+    operator?: string;
   }>();
   const requestKey = `${from}-${to}-${routeCardId}-${routeId}-${date}`;
   // Keyed by the request that produced it — lets "loading" fall naturally
@@ -57,7 +62,9 @@ export default function SearchResultsScreen() {
   const [errorState, setErrorState] = useState<{ key: string; message: string } | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showBusTypeSheet, setShowBusTypeSheet] = useState(false);
+  const [showOperatorSheet, setShowOperatorSheet] = useState(false);
   const [busTypeFilter, setBusTypeFilter] = useState<string | null>(null);
+  const [operatorFilter, setOperatorFilter] = useState<string | null>(operator ?? null);
 
   useEffect(() => {
     if (!date || !((from && to) || routeCardId || routeId)) return;
@@ -81,9 +88,21 @@ export default function SearchResultsScreen() {
     () => Array.from(new Set((results ?? []).map((r) => r.bus_type_class))).sort(),
     [results],
   );
+  const operators = useMemo(() => {
+    const byId = new Map<string, string>();
+    for (const r of results ?? []) byId.set(r.operator_id, r.operator_name);
+    return [...byId.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  }, [results]);
   const filteredResults = useMemo(
-    () => (results && busTypeFilter ? results.filter((r) => r.bus_type_class === busTypeFilter) : results),
-    [results, busTypeFilter],
+    () =>
+      results
+        ? results.filter(
+            (r) =>
+              (!busTypeFilter || r.bus_type_class === busTypeFilter) &&
+              (!operatorFilter || r.operator_id === operatorFilter),
+          )
+        : null,
+    [results, busTypeFilter, operatorFilter],
   );
 
   // Reset a filter that no longer matches any result for this search (new
@@ -91,6 +110,9 @@ export default function SearchResultsScreen() {
   useEffect(() => {
     if (busTypeFilter && !busTypes.includes(busTypeFilter)) setBusTypeFilter(null);
   }, [busTypes, busTypeFilter]);
+  useEffect(() => {
+    if (operatorFilter && !operators.some(([id]) => id === operatorFilter)) setOperatorFilter(null);
+  }, [operators, operatorFilter]);
 
   const pickerValue = useMemo(() => (date ? new Date(`${date}T00:00:00`) : new Date()), [date]);
 
@@ -124,6 +146,15 @@ export default function SearchResultsScreen() {
             <Ionicons name="chevron-down" size={14} color="rgba(255,255,255,0.85)" />
           </Pressable>
         )}
+        {operators.length > 0 && (
+          <Pressable onPress={() => setShowOperatorSheet(true)} style={styles.dateChip} hitSlop={8}>
+            <Ionicons name="business-outline" size={14} color="#fff" />
+            <Text style={styles.heroSubtitle} numberOfLines={1}>
+              {operatorFilter ? (operators.find(([id]) => id === operatorFilter)?.[1] ?? "Operator") : "Operator"}
+            </Text>
+            <Ionicons name="chevron-down" size={14} color="rgba(255,255,255,0.85)" />
+          </Pressable>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -148,7 +179,7 @@ export default function SearchResultsScreen() {
           <View style={[styles.datePickerSheet, { backgroundColor: theme.backgroundElement }]}>
             <View style={styles.datePickerHeader}>
               <Pressable onPress={() => setShowDatePicker(false)} hitSlop={8}>
-                <Text style={{ color: theme.brand, fontWeight: "700", fontSize: 15 }}>Done</Text>
+                <Text style={{ fontFamily: BrandFonts.uiSemiBold, color: theme.brand, fontWeight: "700", fontSize: 15 }}>Done</Text>
               </Pressable>
             </View>
             <DateTimePicker
@@ -177,9 +208,9 @@ export default function SearchResultsScreen() {
       />
       <View style={[styles.datePickerSheet, { backgroundColor: theme.backgroundElement }]}>
         <View style={[styles.datePickerHeader, { justifyContent: "space-between" }]}>
-          <Text style={{ color: theme.text, fontWeight: "700", fontSize: 15 }}>Bus type</Text>
+          <Text style={{ fontFamily: BrandFonts.uiSemiBold, color: theme.text, fontWeight: "700", fontSize: 15 }}>Bus type</Text>
           <Pressable onPress={() => setShowBusTypeSheet(false)} hitSlop={8}>
-            <Text style={{ color: theme.brand, fontWeight: "700", fontSize: 15 }}>Done</Text>
+            <Text style={{ fontFamily: BrandFonts.uiSemiBold, color: theme.brand, fontWeight: "700", fontSize: 15 }}>Done</Text>
           </Pressable>
         </View>
         <Pressable
@@ -211,6 +242,48 @@ export default function SearchResultsScreen() {
     </View>
   );
 
+  const operatorSheet = showOperatorSheet && (
+    <View style={StyleSheet.absoluteFill}>
+      <Pressable
+        style={[StyleSheet.absoluteFill, styles.overlay]}
+        onPress={() => setShowOperatorSheet(false)}
+      />
+      <View style={[styles.datePickerSheet, { backgroundColor: theme.backgroundElement }]}>
+        <View style={[styles.datePickerHeader, { justifyContent: "space-between" }]}>
+          <Text style={{ fontFamily: BrandFonts.uiSemiBold, color: theme.text, fontWeight: "700", fontSize: 15 }}>Operator</Text>
+          <Pressable onPress={() => setShowOperatorSheet(false)} hitSlop={8}>
+            <Text style={{ fontFamily: BrandFonts.uiSemiBold, color: theme.brand, fontWeight: "700", fontSize: 15 }}>Done</Text>
+          </Pressable>
+        </View>
+        <Pressable
+          style={styles.busTypeOption}
+          onPress={() => {
+            setOperatorFilter(null);
+            setShowOperatorSheet(false);
+          }}
+        >
+          <Text style={{ color: theme.text, fontSize: 15 }}>All operators</Text>
+          {!operatorFilter && <Ionicons name="checkmark" size={18} color={theme.brand} />}
+        </Pressable>
+        {operators.map(([id, name]) => (
+          <Pressable
+            key={id}
+            style={styles.busTypeOption}
+            onPress={() => {
+              setOperatorFilter(id);
+              setShowOperatorSheet(false);
+            }}
+          >
+            <Text style={{ color: theme.text, fontSize: 15 }} numberOfLines={1}>
+              {name}
+            </Text>
+            {operatorFilter === id && <Ionicons name="checkmark" size={18} color={theme.brand} />}
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+
   let content: ReactNode;
   if (error) {
     content = (
@@ -235,13 +308,21 @@ export default function SearchResultsScreen() {
       </View>
     );
   } else if ((filteredResults ?? []).length === 0) {
+    const operatorName = operatorFilter ? operators.find(([id]) => id === operatorFilter)?.[1] : null;
     content = (
       <View style={styles.center}>
         <Text style={{ color: theme.textSecondary, textAlign: "center" }}>
-          No {busTypeFilter?.replace("_", " ")} buses for this route and date.
+          No{busTypeFilter ? ` ${busTypeFilter.replace("_", " ")}` : ""} buses
+          {operatorName ? ` from ${operatorName}` : ""} for this route and date.
         </Text>
-        <Pressable onPress={() => setBusTypeFilter(null)} style={{ marginTop: Spacing.two }}>
-          <Text style={{ color: theme.brand, fontWeight: "700" }}>Clear filter</Text>
+        <Pressable
+          onPress={() => {
+            setBusTypeFilter(null);
+            setOperatorFilter(null);
+          }}
+          style={{ marginTop: Spacing.two }}
+        >
+          <Text style={{ fontFamily: BrandFonts.uiSemiBold, color: theme.brand, fontWeight: "700" }}>Clear filters</Text>
         </Pressable>
       </View>
     );
@@ -263,6 +344,7 @@ export default function SearchResultsScreen() {
       {content}
       {datePickerOverlay}
       {busTypeSheet}
+      {operatorSheet}
     </View>
   );
 }
@@ -300,20 +382,23 @@ function TripCard({ trip, theme }: { trip: TripSearchResult; theme: ReturnType<t
       <View style={styles.cardBody}>
         <View style={styles.badgeRow}>
           <View style={[styles.pill, { backgroundColor: theme.backgroundSelected }]}>
-            <Text style={{ color: theme.brand, fontSize: 11, fontWeight: "700" }}>
+            <Text style={{ fontFamily: BrandFonts.uiSemiBold, color: theme.brand, fontSize: 11, fontWeight: "700" }}>
               {trip.bus_type_class.replace("_", " ")}
             </Text>
           </View>
           <View style={styles.operatorRow}>
             <Ionicons name="bus-outline" size={13} color={theme.textSecondary} />
-            <Text style={{ color: theme.textSecondary, fontSize: 12, fontWeight: "600" }} numberOfLines={1}>
+            <Text
+              style={{ fontFamily: BrandFonts.uiSemiBold, color: theme.textSecondary, fontSize: 12, fontWeight: "600" }}
+              numberOfLines={1}
+            >
               {trip.operator_name} · {trip.bus_reg_no}
             </Text>
           </View>
         </View>
         <View style={styles.ratingRow}>
           <Ionicons name="star" size={11} color="#f59e0b" />
-          <Text style={{ color: theme.textSecondary, fontSize: 11, fontWeight: "600" }}>
+          <Text style={{ fontFamily: BrandFonts.uiSemiBold, color: theme.textSecondary, fontSize: 11, fontWeight: "600" }}>
             {trip.operator_rating.toFixed(1)} · {trip.operator_reliability_score.toFixed(0)}%
           </Text>
         </View>
@@ -326,14 +411,16 @@ function TripCard({ trip, theme }: { trip: TripSearchResult; theme: ReturnType<t
             </Text>
           </View>
           <View style={styles.durationCol}>
-            <Text style={{ color: theme.textSecondary, fontSize: 11, fontWeight: "600" }}>{dur}</Text>
+            <Text style={{ fontFamily: BrandFonts.uiSemiBold, color: theme.textSecondary, fontSize: 11, fontWeight: "600" }}>{dur}</Text>
             <View style={styles.durationLine}>
               <View style={[styles.durationDash, { backgroundColor: theme.border }]} />
               <Ionicons name="arrow-forward" size={12} color={theme.textSecondary} />
               <View style={[styles.durationDash, { backgroundColor: theme.border }]} />
             </View>
             {overnight && (
-              <Text style={{ color: "#b45309", fontSize: 10, fontWeight: "700", marginTop: 2 }}>Arrives next day</Text>
+              <Text style={{ fontFamily: BrandFonts.uiSemiBold, color: "#b45309", fontSize: 10, fontWeight: "700", marginTop: 2 }}>
+                Arrives next day
+              </Text>
             )}
           </View>
           <View style={{ flex: 1, alignItems: "flex-end" }}>
@@ -356,7 +443,15 @@ function TripCard({ trip, theme }: { trip: TripSearchResult; theme: ReturnType<t
 
         <View style={[styles.footerRow, { borderTopColor: theme.border }]}>
           <View>
-            <Text style={{ color: theme.textSecondary, fontSize: 10, fontWeight: "700", textTransform: "uppercase" }}>
+            <Text
+              style={{
+                fontFamily: BrandFonts.uiSemiBold,
+                color: theme.textSecondary,
+                fontSize: 10,
+                fontWeight: "700",
+                textTransform: "uppercase",
+              }}
+            >
               LKR
             </Text>
             <Text style={[styles.fare, { color: theme.brand }]}>{trip.fare.toLocaleString("en-LK")}</Text>
@@ -380,11 +475,18 @@ const styles = StyleSheet.create({
   },
   heroTopRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   backButton: { width: 22 },
-  heroTitle: { fontSize: 18, fontWeight: "800", color: "#fff", letterSpacing: -0.3 },
+  heroTitle: {
+    fontFamily: BrandFonts.headingSemiBold,
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#fff",
+    letterSpacing: -0.3,
+  },
   chipRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    flexWrap: "wrap",
+    gap: Spacing.two,
     marginTop: Spacing.two,
   },
   dateChip: {
@@ -397,7 +499,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
-  heroSubtitle: { fontSize: 13, color: "#fff", fontWeight: "600" },
+  heroSubtitle: { fontFamily: BrandFonts.uiSemiBold, fontSize: 13, color: "#fff", fontWeight: "600" },
   overlay: { backgroundColor: "rgba(0,0,0,0.4)" },
   datePickerSheet: {
     position: "absolute",
@@ -428,14 +530,14 @@ const styles = StyleSheet.create({
   thumb: { width: "100%", height: "100%" },
   thumbFallback: { alignItems: "center", justifyContent: "center", backgroundColor: "#004AAD" },
   thumbLogo: { width: 44, height: 44, borderRadius: 10, backgroundColor: "#fff" },
-  thumbInitial: { color: "#fff", fontSize: 26, fontWeight: "800" },
+  thumbInitial: { fontFamily: BrandFonts.headingSemiBold, color: "#fff", fontSize: 26, fontWeight: "800" },
   cardBody: { padding: Spacing.three },
   badgeRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: Spacing.two },
   pill: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 },
   operatorRow: { flexDirection: "row", alignItems: "center", gap: 5, flexShrink: 1 },
   ratingRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 6 },
   timeRow: { flexDirection: "row", alignItems: "center", marginTop: Spacing.three, gap: Spacing.two },
-  time: { fontSize: 19, fontWeight: "800" },
+  time: { fontFamily: BrandFonts.headingSemiBold, fontSize: 19, fontWeight: "800" },
   durationCol: { alignItems: "center" },
   durationLine: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4, width: 64 },
   durationDash: { height: 1, flex: 1 },
@@ -449,7 +551,7 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.three,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
-  fare: { fontSize: 20, fontWeight: "800" },
+  fare: { fontFamily: BrandFonts.headingSemiBold, fontSize: 20, fontWeight: "800" },
   selectButton: { borderRadius: 12, paddingHorizontal: 16, paddingVertical: 10 },
-  selectButtonText: { color: "#fff", fontWeight: "700", fontSize: 13 },
+  selectButtonText: { fontFamily: BrandFonts.uiSemiBold, color: "#fff", fontWeight: "700", fontSize: 13 },
 });

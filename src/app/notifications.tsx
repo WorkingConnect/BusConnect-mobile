@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react";
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from "react-native";
+import { Text } from "@/components/ui/text";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Swipeable, { type SwipeableMethods } from "react-native-gesture-handler/ReanimatedSwipeable";
@@ -17,7 +18,7 @@ import {
   type NotificationItem,
 } from "@/lib/api";
 import { Banner } from "@/components/banner";
-import { Spacing } from "@/constants/theme";
+import { BrandFonts, Spacing } from "@/constants/theme";
 
 function timeAgo(iso: string): string {
   const ms = Date.now() - new Date(iso).getTime();
@@ -191,9 +192,20 @@ const styles = StyleSheet.create({
   },
   heroTopRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   backButton: { width: 32 },
-  heroTitle: { fontSize: 18, fontWeight: "800", color: "#fff", letterSpacing: -0.3 },
+  heroTitle: {
+    fontFamily: BrandFonts.headingSemiBold,
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#fff",
+    letterSpacing: -0.3,
+  },
   markAllButton: { minWidth: 32 },
-  markAllText: { color: "#fff", fontSize: 12, fontWeight: "700" },
+  markAllText: {
+    fontFamily: BrandFonts.uiSemiBold,
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "700",
+  },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: Spacing.six },
   row: {
     flexDirection: "row",

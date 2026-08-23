@@ -7,10 +7,10 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from "react-native";
+import { Text } from "@/components/ui/text";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -19,7 +19,7 @@ import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { deleteMyAccount, ApiError } from "@/lib/api";
 import { Banner } from "@/components/banner";
-import { Spacing } from "@/constants/theme";
+import { Spacing, BrandFonts } from "@/constants/theme";
 
 /**
  * Deleting is really "deactivate + anonymize" server-side (see
@@ -205,13 +205,13 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 24,
   },
   backButton: { alignSelf: "flex-start", marginBottom: Spacing.two },
-  heroTitle: { fontSize: 22, fontWeight: "800", color: "#fff", letterSpacing: -0.3 },
+  heroTitle: { fontFamily: BrandFonts.headingSemiBold, fontSize: 22, fontWeight: "800", color: "#fff", letterSpacing: -0.3 },
   container: { flexGrow: 1, padding: Spacing.four, paddingTop: Spacing.five, alignItems: "center" },
   badge: { width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center", marginBottom: Spacing.three },
   subtitle: { fontSize: 14, textAlign: "center", marginTop: Spacing.two, marginBottom: Spacing.five, lineHeight: 20, maxWidth: 320 },
   card: { width: "100%", borderWidth: 1, borderRadius: 20, padding: Spacing.four },
-  fieldLabel: { fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 },
-  input: { borderWidth: 1, borderRadius: 12, padding: Spacing.three, fontSize: 16, marginBottom: Spacing.three },
+  fieldLabel: { fontFamily: BrandFonts.uiSemiBold, fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 },
+  input: { fontFamily: BrandFonts.uiRegular, borderWidth: 1, borderRadius: 12, padding: Spacing.three, fontSize: 16, marginBottom: Spacing.three },
   button: { borderRadius: 12, paddingVertical: 14, alignItems: "center" },
-  buttonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  buttonText: { fontFamily: BrandFonts.uiSemiBold, color: "#fff", fontWeight: "700", fontSize: 16 },
 });

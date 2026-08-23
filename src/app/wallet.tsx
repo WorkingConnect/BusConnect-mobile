@@ -4,9 +4,9 @@ import {
   FlatList,
   Pressable,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
+import { Text } from "@/components/ui/text";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
@@ -20,7 +20,7 @@ import {
   type WalletTransaction,
 } from "@/lib/api";
 import { Banner } from "@/components/banner";
-import { Spacing, BottomTabInset } from "@/constants/theme";
+import { BrandFonts, Spacing, BottomTabInset } from "@/constants/theme";
 
 function formatLkr(amount: number) {
   return `LKR ${amount.toLocaleString("en-LK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -235,6 +235,7 @@ const styles = StyleSheet.create({
   },
   backButton: { width: 32 },
   heroTitle: {
+    fontFamily: BrandFonts.headingSemiBold,
     fontSize: 18,
     fontWeight: "800",
     color: "#fff",
@@ -251,7 +252,12 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   passBody: { padding: Spacing.four },
-  passLabel: { fontSize: 16, fontWeight: "800", letterSpacing: 0.5 },
+  passLabel: {
+    fontFamily: BrandFonts.headingSemiBold,
+    fontSize: 16,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+  },
   dashedDivider: {
     marginVertical: Spacing.three,
     borderTopWidth: 1,
@@ -265,19 +271,26 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  topupButtonText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  topupButtonText: {
+    fontFamily: BrandFonts.uiSemiBold,
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 15,
+  },
   balanceFooter: {
     paddingHorizontal: Spacing.four,
     paddingVertical: Spacing.three,
   },
-  balanceFooterLabel: { fontSize: 12 },
+  balanceFooterLabel: { fontFamily: BrandFonts.uiRegular, fontSize: 12 },
   balanceFooterValue: {
+    fontFamily: BrandFonts.headingSemiBold,
     fontSize: 24,
     fontWeight: "800",
     marginTop: 2,
     letterSpacing: -0.3,
   },
   sectionLabel: {
+    fontFamily: BrandFonts.headingSemiBold,
     fontSize: 12,
     fontWeight: "700",
     textTransform: "uppercase",

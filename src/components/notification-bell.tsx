@@ -1,9 +1,11 @@
 import { useCallback, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
+import { Text } from "@/components/ui/text";
 import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/lib/auth";
 import { getUnreadNotificationCount } from "@/lib/api";
+import { BrandFonts } from "@/constants/theme";
 
 /** Bell icon with an unread badge — refreshes the count every time this
  *  screen regains focus (e.g. coming back from the notifications list),
@@ -54,5 +56,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 3,
   },
-  badgeText: { color: "#fff", fontSize: 10, fontWeight: "800" },
+  badgeText: {
+    fontFamily: BrandFonts.uiSemiBold,
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "800",
+  },
 });

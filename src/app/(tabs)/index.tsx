@@ -6,10 +6,10 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from "react-native";
+import { Text } from "@/components/ui/text";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -26,11 +26,13 @@ import {
   formatDuration,
   type PopularRoute,
 } from "@/lib/popular-routes";
+import { listActiveOperators, type OperatorSummary } from "@/lib/operators";
 import { getWallet, type Wallet } from "@/lib/api";
 import { NotificationBell } from "@/components/notification-bell";
-import { Spacing, BottomTabInset, TabBarBaseHeight } from "@/constants/theme";
+import { Spacing, BottomTabInset, TabBarBaseHeight, BrandFonts } from "@/constants/theme";
 
 const ROUTE_CARD_WIDTH = 220;
+const OPERATOR_CARD_WIDTH = 128;
 // Must match the tab bar's own borderTopLeftRadius/borderTopRightRadius in
 // (tabs)/_layout.tsx — see the comment where this is used below.
 const TAB_BAR_CORNER_RADIUS = 24;
@@ -93,6 +95,7 @@ export default function SearchScreen() {
   const [popularRoutes, setPopularRoutes] = useState<PopularRoute[] | null>(
     null,
   );
+  const [operators, setOperators] = useState<OperatorSummary[] | null>(null);
   const [wallet, setWallet] = useState<Wallet | null>(null);
 
   const firstName = (
@@ -107,7 +110,12 @@ export default function SearchScreen() {
       setLoading(false);
     });
     void listPopularRoutes(6).then(setPopularRoutes);
+    void listActiveOperators().then(setOperators);
   }, []);
+
+  function openOperator(op: OperatorSummary) {
+    router.push({ pathname: "/operators/[id]", params: { id: op.id } });
+  }
 
   useEffect(() => {
     if (!session) {
@@ -489,6 +497,71 @@ export default function SearchScreen() {
             </ScrollView>
           </View>
         ) : null}
+
+        {operators === null ? null : operators.length > 0 ? (
+          <View style={styles.popularSection}>
+            <Text style={[styles.popularTitle, { color: theme.text }]}>
+              Our operators
+            </Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              snapToInterval={OPERATOR_CARD_WIDTH + Spacing.three}
+              decelerationRate="fast"
+              contentContainerStyle={styles.popularScrollContent}
+            >
+              {operators.map((op) => (
+                <Pressable
+                  key={op.id}
+                  onPress={() => openOperator(op)}
+                  style={[
+                    styles.operatorCard,
+                    {
+                      backgroundColor: theme.backgroundElement,
+                      borderColor: theme.border,
+                    },
+                  ]}
+                >
+                  {op.logoUrl ? (
+                    <Image
+                      source={{ uri: op.logoUrl }}
+                      style={styles.operatorLogo}
+                    />
+                  ) : (
+                    <View
+                      style={[
+                        styles.operatorLogo,
+                        styles.operatorLogoFallback,
+                        { backgroundColor: theme.brand },
+                      ]}
+                    >
+                      <Text style={styles.operatorLogoInitial}>
+                        {op.name.slice(0, 1)}
+                      </Text>
+                    </View>
+                  )}
+                  <Text
+                    style={[styles.operatorName, { color: theme.text }]}
+                    numberOfLines={2}
+                  >
+                    {op.name}
+                  </Text>
+                  <View style={styles.operatorRatingRow}>
+                    <Ionicons name="star" size={11} color="#f59e0b" />
+                    <Text
+                      style={[
+                        styles.operatorRatingText,
+                        { color: theme.textSecondary },
+                      ]}
+                    >
+                      {op.rating.toFixed(1)}
+                    </Text>
+                  </View>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        ) : null}
       </ScrollView>
 
       {showDatePicker && Platform.OS === "android" && (
@@ -661,6 +734,7 @@ const styles = StyleSheet.create({
   },
   heroTopRow: { flexDirection: "row", alignItems: "flex-start" },
   greeting: {
+    fontFamily: BrandFonts.headingSemiBold,
     fontSize: 24,
     fontWeight: "800",
     color: "#fff",
@@ -706,12 +780,13 @@ const styles = StyleSheet.create({
   routeField: { paddingVertical: Spacing.two },
   routeDivider: { height: StyleSheet.hairlineWidth },
   fieldLabel: {
+    fontFamily: BrandFonts.uiSemiBold,
     fontSize: 11,
     fontWeight: "600",
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
-  fieldValue: { fontSize: 16, fontWeight: "700", marginTop: 3 },
+  fieldValue: { fontFamily: BrandFonts.uiSemiBold, fontSize: 16, fontWeight: "700", marginTop: 3 },
   swapButton: {
     width: 36,
     height: 36,
@@ -736,9 +811,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginTop: Spacing.one,
   },
-  searchButtonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  searchButtonText: { fontFamily: BrandFonts.uiSemiBold, color: "#fff", fontWeight: "700", fontSize: 16 },
   popularSection: { marginTop: Spacing.five, gap: Spacing.two },
   popularTitle: {
+    fontFamily: BrandFonts.headingSemiBold,
     fontSize: 18,
     fontWeight: "800",
     marginBottom: Spacing.one,
@@ -766,6 +842,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   routeBadgeTop: {
+    fontFamily: BrandFonts.uiSemiBold,
     color: "#fff",
     fontSize: 9,
     fontWeight: "800",
@@ -775,10 +852,10 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   routeBadgeBottom: { paddingHorizontal: 10, paddingVertical: 4 },
-  routeBadgeCount: { fontSize: 15, fontWeight: "800", textAlign: "center" },
+  routeBadgeCount: { fontFamily: BrandFonts.headingSemiBold, fontSize: 15, fontWeight: "800", textAlign: "center" },
   routeCardBody: { padding: Spacing.three },
   routeCardHeading: { flexDirection: "row", alignItems: "center", gap: 6 },
-  routeCardText: { fontSize: 15, fontWeight: "700", flexShrink: 1 },
+  routeCardText: { fontFamily: BrandFonts.headingSemiBold, fontSize: 15, fontWeight: "700", flexShrink: 1 },
   routeDashedDivider: {
     marginVertical: Spacing.three,
     borderTopWidth: 1,
@@ -789,14 +866,40 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
     justifyContent: "space-between",
   },
-  routeFareLabel: { fontSize: 10, fontWeight: "600" },
-  routeFareValue: { fontSize: 18, fontWeight: "800", marginTop: 1 },
+  routeFareLabel: { fontFamily: BrandFonts.uiRegular, fontSize: 10, fontWeight: "600" },
+  routeFareValue: { fontFamily: BrandFonts.headingSemiBold, fontSize: 18, fontWeight: "800", marginTop: 1 },
   routeSearchButton: {
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 8,
   },
-  routeSearchButtonText: { color: "#fff", fontWeight: "700", fontSize: 13 },
+  routeSearchButtonText: { fontFamily: BrandFonts.uiSemiBold, color: "#fff", fontWeight: "700", fontSize: 13 },
+  operatorCard: {
+    width: OPERATOR_CARD_WIDTH,
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: Spacing.three,
+    alignItems: "center",
+  },
+  operatorLogo: { width: 52, height: 52, borderRadius: 26 },
+  operatorLogoFallback: { alignItems: "center", justifyContent: "center" },
+  operatorLogoInitial: { fontFamily: BrandFonts.headingSemiBold, color: "#fff", fontSize: 20, fontWeight: "800" },
+  operatorName: {
+    fontFamily: BrandFonts.headingSemiBold,
+    marginTop: Spacing.two,
+    fontSize: 13,
+    lineHeight: 16,
+    height: 32,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  operatorRatingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    marginTop: 3,
+  },
+  operatorRatingText: { fontSize: 11, fontWeight: "600" },
   overlay: { backgroundColor: "rgba(0,0,0,0.4)" },
   datePickerSheet: {
     position: "absolute",

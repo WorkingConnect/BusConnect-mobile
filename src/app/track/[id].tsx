@@ -6,9 +6,9 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
+import { Text } from "@/components/ui/text";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
@@ -30,7 +30,7 @@ import {
 } from "@/lib/api";
 import { TrackingMap, type BusPosition } from "@/components/tracking-map";
 import { Banner } from "@/components/banner";
-import { Spacing } from "@/constants/theme";
+import { BrandFonts, Spacing } from "@/constants/theme";
 
 const STALE_MS = 35_000; // no fresh GPS point for this long → treated as "not connected"
 const POLL_MS = 20_000; // safety net behind realtime
@@ -249,7 +249,15 @@ export default function TrackScreen() {
           onPress={() => router.back()}
           style={{ marginTop: Spacing.four }}
         >
-          <Text style={{ color: theme.brand, fontWeight: "600" }}>Go back</Text>
+          <Text
+            style={{
+              fontFamily: BrandFonts.uiSemiBold,
+              color: theme.brand,
+              fontWeight: "600",
+            }}
+          >
+            Go back
+          </Text>
         </Pressable>
       </View>
     );
@@ -653,7 +661,12 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     elevation: 3,
   },
-  routePillText: { color: "#111", fontWeight: "700", fontSize: 13 },
+  routePillText: {
+    fontFamily: BrandFonts.uiSemiBold,
+    color: "#111",
+    fontWeight: "700",
+    fontSize: 13,
+  },
   sheetWrap: { position: "absolute", left: 0, right: 0, bottom: 0 },
   sheet: {
     borderTopLeftRadius: 22,
@@ -689,21 +702,36 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
   },
-  notifyBtnText: { fontSize: 11, fontWeight: "700" },
+  notifyBtnText: {
+    fontFamily: BrandFonts.uiSemiBold,
+    fontSize: 11,
+    fontWeight: "700",
+  },
   dot: { width: 12, height: 12, borderRadius: 6 },
   etaTo: { fontSize: 15, fontWeight: "500", marginTop: Spacing.two },
   statsRow: { flexDirection: "row", gap: Spacing.five, marginTop: Spacing.two },
   statBlock: {},
   statLabel: {
+    fontFamily: BrandFonts.uiSemiBold,
     fontSize: 12,
     fontWeight: "600",
     textTransform: "uppercase",
     letterSpacing: 0.4,
   },
   statValueRow: { flexDirection: "row", alignItems: "baseline", marginTop: 2 },
-  statValue: { fontSize: 30, fontWeight: "800", letterSpacing: -0.8 },
-  statUnit: { fontSize: 15, fontWeight: "700" },
+  statValue: {
+    fontFamily: BrandFonts.headingSemiBold,
+    fontSize: 30,
+    fontWeight: "800",
+    letterSpacing: -0.8,
+  },
+  statUnit: {
+    fontFamily: BrandFonts.headingSemiBold,
+    fontSize: 15,
+    fontWeight: "700",
+  },
   heroTitle: {
+    fontFamily: BrandFonts.headingSemiBold,
     fontSize: 22,
     fontWeight: "800",
     marginTop: Spacing.two,
@@ -727,6 +755,7 @@ const styles = StyleSheet.create({
   crewAvatar: { width: 36, height: 36, borderRadius: 18 },
   crewAvatarPlaceholder: { alignItems: "center", justifyContent: "center" },
   crewLabel: {
+    fontFamily: BrandFonts.uiSemiBold,
     fontSize: 10,
     fontWeight: "700",
     textTransform: "uppercase",

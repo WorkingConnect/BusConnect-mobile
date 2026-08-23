@@ -6,10 +6,10 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from "react-native";
+import { Text } from "@/components/ui/text";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -18,7 +18,7 @@ import { supabase } from "@/lib/supabase";
 import { PhoneField } from "@/components/phone-field";
 import { Banner } from "@/components/banner";
 import { toE164 } from "@/lib/phone";
-import { Spacing } from "@/constants/theme";
+import { Spacing, BrandFonts } from "@/constants/theme";
 
 /**
  * Verifying the OTP itself completes sign-in (Supabase treats a correct
@@ -259,6 +259,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.2)",
   },
   heroTitle: {
+    fontFamily: BrandFonts.headingSemiBold,
     fontSize: 22,
     fontWeight: "800",
     color: "#fff",
@@ -281,6 +282,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.five,
   },
   fieldLabel: {
+    fontFamily: BrandFonts.uiSemiBold,
     fontSize: 12,
     fontWeight: "600",
     textTransform: "uppercase",
@@ -288,6 +290,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   input: {
+    fontFamily: BrandFonts.uiRegular,
     borderWidth: 1,
     borderRadius: 12,
     padding: Spacing.three,
@@ -299,5 +302,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: Spacing.four,
   },
-  buttonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  buttonText: { fontFamily: BrandFonts.uiSemiBold, color: "#fff", fontWeight: "700", fontSize: 16 },
 });

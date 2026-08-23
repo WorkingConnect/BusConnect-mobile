@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Text } from "@/components/ui/text";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import QRCode from "react-native-qrcode-svg";
@@ -8,7 +9,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { useAuth } from "@/lib/auth";
 import { getBooking, ApiError, type Booking } from "@/lib/api";
 import { Banner } from "@/components/banner";
-import { Spacing } from "@/constants/theme";
+import { Spacing, BrandFonts } from "@/constants/theme";
 
 const NOTCH_SIZE = 24;
 
@@ -89,11 +90,31 @@ export default function TicketScreen() {
   const ticket = booking.tickets?.[0];
   const confirmed = booking.status === "confirmed";
 
-  function Cell({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
+  function Cell({
+    label,
+    value,
+    valueColor,
+    emphasize,
+  }: {
+    label: string;
+    value: string;
+    valueColor?: string;
+    /** Matches BusConnect-web's `font-heading` treatment on the Amount cell
+     *  only — every other cell value there is plain body text. */
+    emphasize?: boolean;
+  }) {
     return (
       <View style={styles.cell}>
         <Text style={[styles.cellLabel, { color: theme.textSecondary }]}>{label}</Text>
-        <Text style={[styles.cellValue, { color: valueColor ?? theme.text }]}>{value}</Text>
+        <Text
+          style={[
+            styles.cellValue,
+            { color: valueColor ?? theme.text },
+            emphasize && { fontFamily: BrandFonts.headingSemiBold },
+          ]}
+        >
+          {value}
+        </Text>
       </View>
     );
   }
@@ -147,6 +168,7 @@ export default function TicketScreen() {
                 label="Amount"
                 value={`LKR ${Number(booking.amount).toLocaleString("en-LK")}`}
                 valueColor={theme.brand}
+                emphasize
               />
             </View>
           </View>
@@ -177,6 +199,7 @@ const styles = StyleSheet.create({
   heroTopRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   backButton: { width: 32 },
   heroTitle: {
+    fontFamily: BrandFonts.headingSemiBold,
     flex: 1,
     textAlign: "center",
     fontSize: 22,
@@ -186,7 +209,13 @@ const styles = StyleSheet.create({
   },
   card: { borderWidth: 1, borderRadius: 20, overflow: "hidden" },
   qrSection: { padding: Spacing.four, paddingBottom: Spacing.three },
-  status: { fontSize: 16, fontWeight: "800", textAlign: "center", marginBottom: Spacing.three },
+  status: {
+    fontFamily: BrandFonts.headingSemiBold,
+    fontSize: 16,
+    fontWeight: "800",
+    textAlign: "center",
+    marginBottom: Spacing.three,
+  },
   qrWrap: { alignItems: "center", justifyContent: "center", paddingVertical: Spacing.two },
   perforationRow: { flexDirection: "row", alignItems: "center", height: NOTCH_SIZE },
   notch: {
@@ -207,7 +236,7 @@ const styles = StyleSheet.create({
   grid: { padding: Spacing.four, paddingTop: Spacing.three, gap: Spacing.four },
   gridRow: { flexDirection: "row" },
   cell: { flex: 1, gap: 4 },
-  cellLabel: { fontSize: 12 },
+  cellLabel: { fontFamily: BrandFonts.uiRegular, fontSize: 12 },
   cellValue: { fontSize: 16, fontWeight: "700" },
   ticketsButton: {
     flexDirection: "row",
@@ -219,5 +248,5 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
     marginTop: Spacing.four,
   },
-  ticketsButtonLabel: { fontSize: 15, fontWeight: "700" },
+  ticketsButtonLabel: { fontFamily: BrandFonts.uiSemiBold, fontSize: 15, fontWeight: "700" },
 });

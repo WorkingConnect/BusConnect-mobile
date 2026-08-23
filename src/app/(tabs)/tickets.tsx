@@ -5,10 +5,10 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from "react-native";
+import { Text } from "@/components/ui/text";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import QRCode from "react-native-qrcode-svg";
@@ -19,7 +19,7 @@ import { listMyBookings, type MyBooking } from "@/lib/tickets";
 import { hideBooking, getMyReview, submitReview, ApiError } from "@/lib/api";
 import { Banner } from "@/components/banner";
 import { StarRatingInput } from "@/components/star-rating-input";
-import { Spacing, BottomTabInset } from "@/constants/theme";
+import { Spacing, BottomTabInset, BrandFonts } from "@/constants/theme";
 
 type Tab = "confirmed" | "cancelled";
 
@@ -198,6 +198,7 @@ export default function TicketsScreen() {
             >
               <Text
                 style={{
+                  fontFamily: BrandFonts.uiSemiBold,
                   color: tab === t ? "#fff" : theme.text,
                   fontWeight: "600",
                   fontSize: 13,
@@ -395,6 +396,7 @@ function TicketCard({
                     />
                     <Text
                       style={{
+                        fontFamily: BrandFonts.uiSemiBold,
                         color: theme.brand,
                         fontWeight: "700",
                         fontSize: 13,
@@ -412,7 +414,7 @@ function TicketCard({
                 style={[styles.secondaryButton, { borderColor: theme.border }]}
               >
                 <Text
-                  style={{ color: theme.text, fontWeight: "600", fontSize: 13 }}
+                  style={{ fontFamily: BrandFonts.uiSemiBold, color: theme.text, fontWeight: "600", fontSize: 13 }}
                 >
                   View booking
                 </Text>
@@ -508,7 +510,7 @@ function RateTripButton({
         ]}
       >
         <StarRatingInput value={rating} size={15} />
-        <Text style={{ color: theme.textSecondary, fontWeight: "600", fontSize: 13 }}>
+        <Text style={{ fontFamily: BrandFonts.uiSemiBold, color: theme.textSecondary, fontWeight: "600", fontSize: 13 }}>
           Rated
         </Text>
       </View>
@@ -579,7 +581,9 @@ function RateTripButton({
           disabled={state === "busy"}
           style={[styles.secondaryButton, { borderColor: theme.border }]}
         >
-          <Text style={{ color: theme.text, fontWeight: "600", fontSize: 13 }}>Cancel</Text>
+          <Text style={{ fontFamily: BrandFonts.uiSemiBold, color: theme.text, fontWeight: "600", fontSize: 13 }}>
+            Cancel
+          </Text>
         </Pressable>
       </View>
     </View>
@@ -597,6 +601,7 @@ function Badge({ label, tone }: { label: string; tone: Tab | "class" }) {
     <View style={[styles.badge, { backgroundColor: c.bg }]}>
       <Text
         style={{
+          fontFamily: BrandFonts.uiSemiBold,
           color: c.fg,
           fontSize: 11,
           fontWeight: "700",
@@ -622,6 +627,7 @@ function Stat({
     <View style={styles.stat}>
       <Text
         style={{
+          fontFamily: BrandFonts.uiSemiBold,
           color: theme.textSecondary,
           fontSize: 11,
           textTransform: "uppercase",
@@ -632,6 +638,7 @@ function Stat({
       </Text>
       <Text
         style={{
+          fontFamily: BrandFonts.uiSemiBold,
           color: theme.text,
           fontSize: 14,
           fontWeight: "700",
@@ -654,12 +661,14 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 24,
   },
   heroTitle: {
+    fontFamily: BrandFonts.headingSemiBold,
     fontSize: 22,
     fontWeight: "800",
     color: "#fff",
     letterSpacing: -0.3,
   },
   heroSubtitle: {
+    fontFamily: BrandFonts.uiRegular,
     fontSize: 13,
     color: "rgba(255,255,255,0.85)",
     marginTop: Spacing.one,
@@ -690,12 +699,13 @@ const styles = StyleSheet.create({
   badgeRow: { flexDirection: "row", gap: 6, flexWrap: "wrap" },
   badge: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 },
   routeName: {
+    fontFamily: BrandFonts.headingSemiBold,
     fontSize: 16,
     fontWeight: "800",
     marginTop: 10,
     letterSpacing: -0.2,
   },
-  routeMeta: { fontSize: 13, marginTop: 3, lineHeight: 18 },
+  routeMeta: { fontFamily: BrandFonts.uiRegular, fontSize: 13, marginTop: 3, lineHeight: 18 },
   notchRow: { height: 20, flexDirection: "row", alignItems: "center" },
   notchCircle: {
     position: "absolute",
@@ -728,7 +738,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  primaryButtonText: { color: "#fff", fontWeight: "700", fontSize: 13 },
+  primaryButtonText: { fontFamily: BrandFonts.uiSemiBold, color: "#fff", fontWeight: "700", fontSize: 13 },
   secondaryButton: {
     flex: 1,
     flexDirection: "row",
@@ -760,5 +770,5 @@ const styles = StyleSheet.create({
     padding: 12,
     backgroundColor: "#fff",
   },
-  qrHint: { fontSize: 12, marginTop: Spacing.two, textAlign: "center" },
+  qrHint: { fontFamily: BrandFonts.uiRegular, fontSize: 12, marginTop: Spacing.two, textAlign: "center" },
 });

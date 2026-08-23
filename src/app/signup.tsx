@@ -7,10 +7,10 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from "react-native";
+import { Text } from "@/components/ui/text";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, router, type Href } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -20,7 +20,7 @@ import { updateMyProfile } from "@/lib/api";
 import { PhoneField } from "@/components/phone-field";
 import { Banner } from "@/components/banner";
 import { toE164 } from "@/lib/phone";
-import { Spacing } from "@/constants/theme";
+import { Spacing, BrandFonts } from "@/constants/theme";
 
 // Matches the backend's UpdateMyProfileDto.nic validation exactly — 9 digits
 // + V/X (old format) or 12 digits (new format).
@@ -316,6 +316,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.three,
   },
   heroTitle: {
+    fontFamily: BrandFonts.headingSemiBold,
     fontSize: 22,
     fontWeight: "800",
     color: "#fff",
@@ -332,6 +333,7 @@ const styles = StyleSheet.create({
   },
   form: { width: "100%" },
   fieldLabel: {
+    fontFamily: BrandFonts.uiSemiBold,
     fontSize: 12,
     fontWeight: "600",
     textTransform: "uppercase",
@@ -346,12 +348,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: Spacing.three,
   },
-  input: { flex: 1, paddingVertical: Spacing.three, fontSize: 16 },
+  input: { fontFamily: BrandFonts.uiRegular, flex: 1, paddingVertical: Spacing.three, fontSize: 16 },
   button: {
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: "center",
     marginTop: Spacing.one,
   },
-  buttonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  buttonText: { fontFamily: BrandFonts.uiSemiBold, color: "#fff", fontWeight: "700", fontSize: 16 },
 });

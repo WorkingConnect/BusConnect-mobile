@@ -34,6 +34,21 @@ export const Colors = {
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
+// Matches BusConnect-web's type system (layout.tsx / globals.css): IBM Plex
+// Sans for body text, Outfit for headings, Inter for UI chrome (labels, nav,
+// buttons, forms). Registered via `useFonts` in the root layout — these keys
+// must match exactly.
+export const BrandFonts = {
+  bodyRegular: 'IBMPlexSans-Regular',
+  bodyMedium: 'IBMPlexSans-Medium',
+  bodySemiBold: 'IBMPlexSans-SemiBold',
+  headingRegular: 'Outfit-Regular',
+  headingSemiBold: 'Outfit-SemiBold',
+  uiRegular: 'Inter-Regular',
+  uiMedium: 'Inter-Medium',
+  uiSemiBold: 'Inter-SemiBold',
+} as const;
+
 export const Fonts = Platform.select({
   ios: {
     /** iOS `UIFontDescriptorSystemDesignDefault` */
