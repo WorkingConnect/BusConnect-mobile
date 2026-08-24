@@ -231,11 +231,6 @@ export default function TripDetailScreen() {
               <Ionicons name="star" size={11} color="#fde68a" />
               <Text style={styles.heroBadgeText}>{(trip.bus.operator?.rating ?? 0).toFixed(1)}</Text>
             </View>
-            <View style={styles.heroBadge}>
-              <Text style={styles.heroBadgeText}>
-                {(trip.bus.operator?.reliability_score ?? 0).toFixed(0)}% on-time
-              </Text>
-            </View>
           </View>
         </>
       )}
@@ -269,7 +264,7 @@ export default function TripDetailScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
       {hero}
-      <ScrollView contentContainerStyle={{ padding: Spacing.three, paddingBottom: 200 }}>
+      <ScrollView contentContainerStyle={{ padding: Spacing.three, paddingBottom: Spacing.six }}>
         <View
           style={[styles.journeyCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
         >
@@ -415,55 +410,55 @@ export default function TripDetailScreen() {
           ))}
         </View>
 
+        <View style={[styles.footer, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+          {stops.length > 0 && (
+            <View style={[styles.footerStopsRow, { borderBottomColor: theme.border }]}>
+              <Pressable onPress={() => setStopPickerMode("from")} style={styles.stopField}>
+                <Text style={{ fontFamily: BrandFonts.uiRegular, color: theme.textSecondary, fontSize: 11 }}>Boarding</Text>
+                <Text
+                  style={{ fontFamily: BrandFonts.uiSemiBold, color: theme.text, fontWeight: "700", fontSize: 13 }}
+                  numberOfLines={1}
+                >
+                  {boardStop?.location_name ?? "Select"}
+                </Text>
+              </Pressable>
+              <View style={[styles.footerStopsDivider, { backgroundColor: theme.border }]} />
+              <Pressable onPress={() => setStopPickerMode("to")} style={styles.stopField}>
+                <Text style={{ fontFamily: BrandFonts.uiRegular, color: theme.textSecondary, fontSize: 11 }}>Drop-off</Text>
+                <Text
+                  style={{ fontFamily: BrandFonts.uiSemiBold, color: theme.text, fontWeight: "700", fontSize: 13 }}
+                  numberOfLines={1}
+                >
+                  {dropStop?.location_name ?? "Select"}
+                </Text>
+              </Pressable>
+            </View>
+          )}
+          <View style={styles.footerSummaryRow}>
+            <View>
+              <Text style={{ fontFamily: BrandFonts.uiRegular, color: theme.textSecondary, fontSize: 12 }}>
+                {selected.size > 0 ? [...selected].join(", ") : "No seats selected"}
+              </Text>
+              <Text style={{ fontFamily: BrandFonts.headingSemiBold, color: theme.brand, fontWeight: "800", fontSize: 18 }}>
+                LKR {total.toLocaleString("en-LK")}
+              </Text>
+            </View>
+            <Pressable
+              onPress={handleContinue}
+              disabled={selected.size === 0 || busy}
+              style={[styles.continueButton, { backgroundColor: theme.brand, opacity: selected.size === 0 || busy ? 0.6 : 1 }]}
+            >
+              {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.continueText}>Continue</Text>}
+            </Pressable>
+          </View>
+        </View>
+
         {error && (
           <View style={{ marginTop: Spacing.three }}>
             <Banner tone="error" message={error} />
           </View>
         )}
       </ScrollView>
-
-      <View style={[styles.footer, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-        {stops.length > 0 && (
-          <View style={[styles.footerStopsRow, { borderBottomColor: theme.border }]}>
-            <Pressable onPress={() => setStopPickerMode("from")} style={styles.stopField}>
-              <Text style={{ fontFamily: BrandFonts.uiRegular, color: theme.textSecondary, fontSize: 11 }}>Boarding</Text>
-              <Text
-                style={{ fontFamily: BrandFonts.uiSemiBold, color: theme.text, fontWeight: "700", fontSize: 13 }}
-                numberOfLines={1}
-              >
-                {boardStop?.location_name ?? "Select"}
-              </Text>
-            </Pressable>
-            <View style={[styles.footerStopsDivider, { backgroundColor: theme.border }]} />
-            <Pressable onPress={() => setStopPickerMode("to")} style={styles.stopField}>
-              <Text style={{ fontFamily: BrandFonts.uiRegular, color: theme.textSecondary, fontSize: 11 }}>Drop-off</Text>
-              <Text
-                style={{ fontFamily: BrandFonts.uiSemiBold, color: theme.text, fontWeight: "700", fontSize: 13 }}
-                numberOfLines={1}
-              >
-                {dropStop?.location_name ?? "Select"}
-              </Text>
-            </Pressable>
-          </View>
-        )}
-        <View style={styles.footerSummaryRow}>
-          <View>
-            <Text style={{ fontFamily: BrandFonts.uiRegular, color: theme.textSecondary, fontSize: 12 }}>
-              {selected.size > 0 ? [...selected].join(", ") : "No seats selected"}
-            </Text>
-            <Text style={{ fontFamily: BrandFonts.headingSemiBold, color: theme.brand, fontWeight: "800", fontSize: 18 }}>
-              LKR {total.toLocaleString("en-LK")}
-            </Text>
-          </View>
-          <Pressable
-            onPress={handleContinue}
-            disabled={selected.size === 0 || busy}
-            style={[styles.continueButton, { backgroundColor: theme.brand, opacity: selected.size === 0 || busy ? 0.6 : 1 }]}
-          >
-            {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.continueText}>Continue</Text>}
-          </Pressable>
-        </View>
-      </View>
 
       <Modal visible={!!genderPromptSeat} transparent animationType="fade" onRequestClose={() => setGenderPromptSeat(null)}>
         <Pressable style={styles.modalOverlay} onPress={() => setGenderPromptSeat(null)}>
@@ -697,11 +692,10 @@ const styles = StyleSheet.create({
   seat: { width: 36, height: 36, borderRadius: 8, borderWidth: 1, alignItems: "center", justifyContent: "center" },
   aisle: { width: 24 },
   footer: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    borderTopWidth: 1,
+    marginTop: Spacing.three,
+    borderWidth: 1,
+    borderRadius: 16,
+    overflow: "hidden",
   },
   footerStopsRow: { flexDirection: "row", alignItems: "center", borderBottomWidth: 1 },
   footerStopsDivider: { width: 1, alignSelf: "stretch", marginVertical: Spacing.two },

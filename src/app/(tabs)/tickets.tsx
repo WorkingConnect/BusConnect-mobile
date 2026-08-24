@@ -76,6 +76,14 @@ export default function TicketsScreen() {
   // also covers the load-on-mount case without a second, redundant fetch.
   useFocusEffect(load);
 
+  // No account → go straight to the sign-in screen instead of showing a
+  // placeholder link the user has to tap.
+  useEffect(() => {
+    if (!authLoading && !session) {
+      router.replace({ pathname: "/login", params: { next: "/tickets" } });
+    }
+  }, [authLoading, session]);
+
   const hero = (
     <SafeAreaView
       edges={["top"]}
@@ -104,17 +112,7 @@ export default function TicketsScreen() {
       <View style={{ flex: 1, backgroundColor: theme.background }}>
         {hero}
         <View style={styles.center}>
-          <Pressable
-            onPress={() =>
-              router.push({ pathname: "/login", params: { next: "/tickets" } })
-            }
-          >
-            <Text
-              style={{ color: theme.brand, fontWeight: "600", fontSize: 16 }}
-            >
-              Sign in to see your tickets
-            </Text>
-          </Pressable>
+          <ActivityIndicator color={theme.brand} />
         </View>
       </View>
     );

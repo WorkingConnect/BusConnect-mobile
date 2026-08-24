@@ -399,7 +399,7 @@ function TripCard({ trip, theme }: { trip: TripSearchResult; theme: ReturnType<t
         <View style={styles.ratingRow}>
           <Ionicons name="star" size={11} color="#f59e0b" />
           <Text style={{ fontFamily: BrandFonts.uiSemiBold, color: theme.textSecondary, fontSize: 11, fontWeight: "600" }}>
-            {trip.operator_rating.toFixed(1)} · {trip.operator_reliability_score.toFixed(0)}%
+            {trip.operator_rating.toFixed(1)}
           </Text>
         </View>
 
