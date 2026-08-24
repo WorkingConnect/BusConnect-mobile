@@ -179,7 +179,11 @@ export default function TripDetailScreen() {
       });
       router.push({ pathname: "/checkout/[id]", params: { id: booking.booking_id } });
     } catch (e) {
-      if (e instanceof ApiError && e.status === 409) {
+      if (e instanceof ApiError && e.status === 409 && e.message.includes("Booking has been closed")) {
+        setError(e.message);
+        setSelected(new Set());
+        setGenders(new Map());
+      } else if (e instanceof ApiError && e.status === 409) {
         setError("Some of those seats were just taken. Please pick again.");
         setSelected(new Set());
         setGenders(new Map());

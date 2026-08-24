@@ -68,6 +68,7 @@ export interface TripSearchResult {
   depart_at: string;
   arrive_est: string | null;
   status: string;
+  booking_closed: boolean;
   bus_reg_no: string;
   bus_amenities: string[];
   bus_images: string[];

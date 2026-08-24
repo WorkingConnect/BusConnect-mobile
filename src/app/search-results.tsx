@@ -357,13 +357,21 @@ function TripCard({ trip, theme }: { trip: TripSearchResult; theme: ReturnType<t
 
   return (
     <Pressable
-      onPress={() =>
-        router.push({
-          pathname: "/trips/[id]",
-          params: { id: trip.trip_id, from: trip.from_stop_id, to: trip.to_stop_id },
-        })
+      onPress={
+        trip.booking_closed
+          ? undefined
+          : () =>
+              router.push({
+                pathname: "/trips/[id]",
+                params: { id: trip.trip_id, from: trip.from_stop_id, to: trip.to_stop_id },
+              })
       }
-      style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
+      disabled={trip.booking_closed}
+      style={[
+        styles.card,
+        { backgroundColor: theme.backgroundElement, borderColor: theme.border },
+        trip.booking_closed && styles.cardClosed,
+      ]}
     >
       <View style={styles.thumbWrap}>
         {image ? (
@@ -386,6 +394,13 @@ function TripCard({ trip, theme }: { trip: TripSearchResult; theme: ReturnType<t
               {trip.bus_type_class.replace("_", " ")}
             </Text>
           </View>
+          {trip.booking_closed && (
+            <View style={[styles.pill, { backgroundColor: "#fee2e2" }]}>
+              <Text style={{ fontFamily: BrandFonts.uiSemiBold, color: "#b91c1c", fontSize: 11, fontWeight: "700" }}>
+                Booking closed
+              </Text>
+            </View>
+          )}
           <View style={styles.operatorRow}>
             <Ionicons name="bus-outline" size={13} color={theme.textSecondary} />
             <Text
@@ -456,8 +471,15 @@ function TripCard({ trip, theme }: { trip: TripSearchResult; theme: ReturnType<t
             </Text>
             <Text style={[styles.fare, { color: theme.brand }]}>{trip.fare.toLocaleString("en-LK")}</Text>
           </View>
-          <View style={[styles.selectButton, { backgroundColor: theme.brand }]}>
-            <Text style={styles.selectButtonText}>Select seats</Text>
+          <View
+            style={[
+              styles.selectButton,
+              { backgroundColor: trip.booking_closed ? theme.border : theme.brand },
+            ]}
+          >
+            <Text style={styles.selectButtonText}>
+              {trip.booking_closed ? "Booking closed" : "Select seats"}
+            </Text>
           </View>
         </View>
       </View>
@@ -526,6 +548,7 @@ const styles = StyleSheet.create({
   },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: Spacing.four },
   card: { borderWidth: 1, borderRadius: 16, overflow: "hidden" },
+  cardClosed: { opacity: 0.6 },
   thumbWrap: { width: "100%", height: 120 },
   thumb: { width: "100%", height: "100%" },
   thumbFallback: { alignItems: "center", justifyContent: "center", backgroundColor: "#004AAD" },
