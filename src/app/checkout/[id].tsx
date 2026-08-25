@@ -43,6 +43,35 @@ function formatCountdown(totalSeconds: number) {
 
 
 /**
+ * Pins the viewport and defeats WebKit's auto-zoom-on-input-focus behaviour
+ * (triggered by any focused field under 16px, regardless of viewport
+ * settings — see the injectedJavaScript comment below) on whatever page is
+ * currently loaded in the checkout WebView, ours or MPGS's own. A no-op if
+ * run more than once (setting the same meta content / re-appending an
+ * already-present <style id="..."> tag is harmless), so it's safe to inject
+ * both before and after each navigation.
+ */
+const PIN_ZOOM_SCRIPT = `
+  (function () {
+    var meta = document.querySelector('meta[name="viewport"]');
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.name = 'viewport';
+      document.head && document.head.appendChild(meta);
+    }
+    meta.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no';
+
+    if (document.head && !document.getElementById('busconnect-pin-zoom-style')) {
+      var style = document.createElement('style');
+      style.id = 'busconnect-pin-zoom-style';
+      style.textContent = 'input, select, textarea, button { font-size: 16px !important; }';
+      document.head.appendChild(style);
+    }
+  })();
+  true;
+`;
+
+/**
  * A minimal HTML shell that loads MPGS's hosted-checkout SDK and hands it
  * only the session id — the SDK then does a full-page redirect to MPGS's own
  * payment page inside this WebView. data-error/data-cancel are function
@@ -51,9 +80,16 @@ function formatCountdown(totalSeconds: number) {
  * client-side success callback for this flow at all.
  */
 function checkoutHtml(checkout: MpgsCheckoutSession) {
+  // Warms up DNS/TLS for MPGS's domain while the rest of this bootstrap
+  // page is still parsing, instead of only starting that handshake once the
+  // <script src> below is reached — shaves a real round trip off what was
+  // otherwise a fully cold connection to an external domain.
+  const mpgsOrigin = new URL(checkout.checkoutJsUrl).origin;
   return `<!doctype html><html>
   <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <link rel="preconnect" href="${mpgsOrigin}" />
+    <link rel="dns-prefetch" href="${mpgsOrigin}" />
     <style>html, body { margin: 0; padding: 0; }</style>
   </head>
   <body>
@@ -645,19 +681,26 @@ export default function CheckoutScreen() {
         // to MPGS's own hosted page, a completely different document our
         // meta tag never touches. injectedJavaScriptBeforeContentLoaded runs
         // on every navigation in this WebView (unlike source.html), so it's
-        // the only way to force a mobile-sized viewport on MPGS's real page.
-        injectedJavaScriptBeforeContentLoaded={`
-          (function () {
-            var meta = document.querySelector('meta[name="viewport"]');
-            if (!meta) {
-              meta = document.createElement('meta');
-              meta.name = 'viewport';
-              document.head && document.head.appendChild(meta);
-            }
-            meta.content = 'width=device-width, initial-scale=1, maximum-scale=1';
-          })();
-          true;
-        `}
+        // the only way to reach MPGS's real page.
+        //
+        // Two separate fixes, both needed — this is what was causing the
+        // screen to zoom in and never settle while entering card details:
+        //  1. A correct, explicit no-zoom viewport (maximum-scale=1 AND
+        //     user-scalable=no — Android WebView respects the former,
+        //     iOS WKWebView the latter).
+        //  2. A <style> rule forcing every form field to 16px+. This is the
+        //     actual root cause, independent of the viewport meta entirely:
+        //     WebKit auto-zooms the whole page on focus for any input whose
+        //     font-size is under 16px, to keep the text legible — a
+        //     documented iOS Safari/WKWebView behaviour, not a bug in our
+        //     viewport setup, and MPGS's own page uses a smaller size. A
+        //     <style> tag (vs. setting each input's style once) keeps working
+        //     even for fields MPGS's own JS renders after this script runs.
+        injectedJavaScriptBeforeContentLoaded={PIN_ZOOM_SCRIPT}
+        // Re-applied after the page finishes loading too, as a safety net —
+        // MPGS's page is JS-heavy and can rebuild its own <head> content
+        // after the beforeContentLoaded pass already ran.
+        injectedJavaScript={PIN_ZOOM_SCRIPT}
         startInLoadingState
         renderLoading={() => (
           <View style={[StyleSheet.absoluteFill, styles.center, { backgroundColor: theme.background }]}>
