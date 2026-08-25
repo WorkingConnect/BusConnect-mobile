@@ -697,10 +697,6 @@ export default function CheckoutScreen() {
         //     <style> tag (vs. setting each input's style once) keeps working
         //     even for fields MPGS's own JS renders after this script runs.
         injectedJavaScriptBeforeContentLoaded={PIN_ZOOM_SCRIPT}
-        // Re-applied after the page finishes loading too, as a safety net —
-        // MPGS's page is JS-heavy and can rebuild its own <head> content
-        // after the beforeContentLoaded pass already ran.
-        injectedJavaScript={PIN_ZOOM_SCRIPT}
         startInLoadingState
         renderLoading={() => (
           <View style={[StyleSheet.absoluteFill, styles.center, { backgroundColor: theme.background }]}>
