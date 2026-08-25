@@ -14,14 +14,122 @@ import { MUTED_ANDROID_MAP_STYLE } from "@/constants/map-style";
 export interface BusPosition {
   lat: number;
   lng: number;
+  /** km/h from the conductor's device, when reported — drives how fast the
+   *  marker dead-reckons forward between GPS fixes. Optional so callers
+   *  (e.g. the passenger's own position) can omit it. */
+  speedKmh?: number | null;
+  /** ISO timestamp of this fix — lets the marker predict how far the bus has
+   *  travelled since it was recorded. */
+  recordedAt?: string | null;
 }
 
 const BRAND = "#004aad";
 const ROUTE_UPCOMING = "#a9c2e8";
-const YOU_BLUE = "#1a73e8";
 const PIN_END = "#dc2626";
 
+// The bus reports its position every ~8s. Rather than gliding to each fix and
+// then sitting frozen until the next one (the classic bus-tracker stutter),
+// we project the bus onto the route line and advance it continuously along
+// the road at its own speed, easing to each fresh fix when it lands — the
+// smooth, always-alive feel of Uber/Grab/Metro-style tracking.
+const MAX_PREDICT_S = 10; // stop dead-reckoning forward if a fix is this overdue (before the screen's 35s "signal lost")
+const POSITION_EASE = 0.15; // per-frame lerp of the drawn position toward the predicted one — smooths fix corrections
+const CAM_FOLLOW_MS = 900; // how often (and how long) the camera re-centres on the moving bus while following
+const MAX_SPEED_MPS = 30; // ~108 km/h — clamp bad speed reads so a glitch can't fling the marker down the route
+
 type LatLng = { latitude: number; longitude: number };
+
+const EARTH_R = 6371000;
+
+/** Great-circle distance between two coordinates, in metres. */
+function haversineMeters(a: LatLng, b: LatLng): number {
+  const dLat = toRad(b.latitude - a.latitude);
+  const dLng = toRad(b.longitude - a.longitude);
+  const lat1 = toRad(a.latitude);
+  const lat2 = toRad(b.latitude);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return 2 * EARTH_R * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+/** Running distance (metres) from the route's start to each vertex, so any
+ *  "distance along the route" can be mapped to/from a vertex in O(1)–O(n). */
+function cumulativeDistances(coords: LatLng[]): number[] {
+  const cum = [0];
+  for (let i = 1; i < coords.length; i++) {
+    cum[i] = cum[i - 1] + haversineMeters(coords[i - 1], coords[i]);
+  }
+  return cum;
+}
+
+/** Projects a GPS point onto the route polyline, returning how far along the
+ *  route (metres) the nearest point sits. Uses a flat-earth metre projection
+ *  local to the point — fine at Sri Lanka scale for finding the closest
+ *  segment. Called once per fix, so a full scan is cheap. */
+function projectDistanceAlong(point: LatLng, coords: LatLng[], cum: number[]): number {
+  const mPerDegLat = 111320;
+  const cosLat = Math.cos(toRad(point.latitude));
+  const px = point.longitude * mPerDegLat * cosLat;
+  const py = point.latitude * mPerDegLat;
+  let bestAlong = 0;
+  let bestPerp = Infinity;
+  for (let i = 0; i < coords.length - 1; i++) {
+    const a = coords[i];
+    const b = coords[i + 1];
+    const ax = a.longitude * mPerDegLat * cosLat;
+    const ay = a.latitude * mPerDegLat;
+    const bx = b.longitude * mPerDegLat * cosLat;
+    const by = b.latitude * mPerDegLat;
+    const dx = bx - ax;
+    const dy = by - ay;
+    const segLen2 = dx * dx + dy * dy;
+    let t = segLen2 > 0 ? ((px - ax) * dx + (py - ay) * dy) / segLen2 : 0;
+    t = Math.max(0, Math.min(1, t));
+    const cx = ax + t * dx;
+    const cy = ay + t * dy;
+    const perp = Math.hypot(px - cx, py - cy);
+    if (perp < bestPerp) {
+      bestPerp = perp;
+      bestAlong = cum[i] + t * (cum[i + 1] - cum[i]);
+    }
+  }
+  return bestAlong;
+}
+
+/** The coordinate (and road bearing) at a given distance along the route.
+ *  `cursor` is the last segment index we were on — advancing it forward keeps
+ *  this O(1) per frame instead of re-scanning the whole line every time. */
+function pointAtDistance(
+  dist: number,
+  coords: LatLng[],
+  cum: number[],
+  cursor: number,
+): { latitude: number; longitude: number; bearing: number; cursor: number } {
+  const total = cum[cum.length - 1];
+  const d = Math.max(0, Math.min(total, dist));
+  let i = Math.max(0, Math.min(cursor, coords.length - 2));
+  while (i < coords.length - 2 && cum[i + 1] < d) i++;
+  while (i > 0 && cum[i] > d) i--;
+  const segLen = cum[i + 1] - cum[i] || 1;
+  const t = (d - cum[i]) / segLen;
+  const a = coords[i];
+  const b = coords[i + 1];
+  return {
+    latitude: a.latitude + t * (b.latitude - a.latitude),
+    longitude: a.longitude + t * (b.longitude - a.longitude),
+    bearing: bearingBetween(a, b),
+    cursor: i,
+  };
+}
+
+/** Adds the shortest signed rotation from `prev` toward `target` degrees,
+ *  keeping the value continuous (never a 359°→0° backspin) so the marker
+ *  turns the short way. */
+function unwrapHeading(prev: number, target: number): number {
+  const delta = (((target - prev) % 360) + 540) % 360 - 180;
+  return prev + delta;
+}
 
 // Sri Lanka's bounding box, plus a little padding — the map keeps its center
 // inside this box and won't zoom out far enough to show much beyond the
@@ -153,13 +261,11 @@ export function TrackingMap({
   route,
   boardingStopId,
   position,
-  passengerPosition,
   bottomInset = 0,
 }: {
   route: TripRoute;
   boardingStopId: string;
   position: BusPosition | null;
-  passengerPosition?: BusPosition | null;
   /** Height of any overlay (e.g. the bottom sheet) covering the map's
    *  bottom edge, so the recenter/zoom controls sit above it instead of
    *  underneath. */
@@ -167,8 +273,21 @@ export function TrackingMap({
 }) {
   const mapRef = useRef<MapView>(null);
   const [userMoved, setUserMoved] = useState(false);
+  // Mirror of `userMoved` for the animation loop's closure, which can't see
+  // React state updates without re-subscribing.
+  const userMovedRef = useRef(false);
   const placed = useRef(false);
   const prevPos = useRef<LatLng | null>(null);
+
+  // Marker snapshotting: react-native-maps captures the marker's content to a
+  // native image. We only need that snapshot once (to grab the bus icon);
+  // after ~1.5s we turn it off so the per-frame position/rotation updates
+  // animate natively without re-snapshotting every frame.
+  const [busTracksView, setBusTracksView] = useState(true);
+  useEffect(() => {
+    const t = setTimeout(() => setBusTracksView(false), 1500);
+    return () => clearTimeout(t);
+  }, []);
 
   // Lazy-init the animated coordinate (a `useRef(new …)` would read the ref
   // during render, which the compiler lint disallows).
@@ -185,6 +304,9 @@ export function TrackingMap({
   const headingRotate = heading.interpolate({
     inputRange: [0, 360],
     outputRange: ["0deg", "360deg"],
+    // A continuous unwrapped heading can run past 360°/below 0°; extend keeps
+    // the rotation linear rather than clamping.
+    extrapolate: "extend",
   });
 
   const routeCoords = useMemo<LatLng[]>(
@@ -195,6 +317,25 @@ export function TrackingMap({
       })),
     [route],
   );
+  const hasPath = routeCoords.length >= 2;
+
+  // ── Route-follow prediction state (all refs — driven imperatively by the
+  //    animation loop, never React state, so nothing re-renders per frame) ──
+  const coordsRef = useRef<LatLng[]>([]);
+  const cumRef = useRef<number[]>([]);
+  const fixAlongRef = useRef<number | null>(null); // distance-along at the last GPS fix
+  const fixTimeRef = useRef(0); // when that fix was recorded (ms)
+  const speedMpsRef = useRef(0); // effective speed used to dead-reckon forward
+  const displayAlongRef = useRef(0); // distance-along currently drawn
+  const cursorRef = useRef(0); // forward-only segment cursor for pointAtDistance
+  const unwrappedHeadingRef = useRef(0);
+  const lastCamRef = useRef(0);
+
+  useEffect(() => {
+    coordsRef.current = routeCoords;
+    cumRef.current = hasPath ? cumulativeDistances(routeCoords) : [];
+    cursorRef.current = 0;
+  }, [routeCoords, hasPath]);
 
   // The already-traveled portion of the line (muted) vs. what's ahead (brand
   // blue) — a nearest-vertex split against the bus's current position, same
@@ -233,52 +374,133 @@ export function TrackingMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- initial only; later movement is imperative
   }, []);
 
-  // Imperatively move the marker + camera on each new position — no React
-  // state, so it stays out of the compiler's setState-in-effect rule. The
-  // first fix snaps; later ones glide (AnimatedRegion.timing). `toValue` is
-  // required by the RN Animated config type but ignored by region timing.
+  // ── On each new GPS fix: update the prediction targets (route mode), or
+  //    fall back to the old glide-to-fix behaviour when the trip has no route
+  //    geometry to follow. No per-frame work here — just refreshing the
+  //    targets the animation loop below reads. ──────────────────────────────
   useEffect(() => {
-    if (!position) return;
-    const next: LatLng = { latitude: position.lat, longitude: position.lng };
-    if (!placed.current) {
-      placed.current = true;
-      busCoord.setValue({ ...next, latitudeDelta: 0, longitudeDelta: 0 });
-    } else {
-      busCoord
-        .timing({
-          toValue: 0,
-          ...next,
-          latitudeDelta: 0,
-          longitudeDelta: 0,
-          duration: 1000,
-          useNativeDriver: false,
-        })
-        .start();
+    // Tracking lost → freeze the marker and reset so the next fix snaps fresh.
+    if (!position) {
+      placed.current = false;
+      fixAlongRef.current = null;
+      prevPos.current = null;
+      return;
+    }
 
-      // Skip the bearing update on a near-zero move — GPS jitter at a stop
-      // would otherwise spin the icon back and forth for no reason.
-      const prev = prevPos.current;
-      if (prev) {
-        const moved =
-          (prev.latitude - next.latitude) ** 2 +
-          (prev.longitude - next.longitude) ** 2;
-        if (moved > 1e-10) {
-          Animated.timing(heading, {
-            toValue: bearingBetween(prev, next),
-            duration: 900,
-            useNativeDriver: true,
-          }).start();
+    // Fallback: no route line to follow — glide straight to each fix (the
+    // original behaviour). `toValue` is required by the RN Animated config
+    // type but ignored by region timing.
+    if (!hasPath) {
+      const next: LatLng = { latitude: position.lat, longitude: position.lng };
+      if (!placed.current) {
+        placed.current = true;
+        busCoord.setValue({ ...next, latitudeDelta: 0, longitudeDelta: 0 });
+      } else {
+        busCoord
+          .timing({ toValue: 0, ...next, latitudeDelta: 0, longitudeDelta: 0, duration: 1000, useNativeDriver: false })
+          .start();
+        const prev = prevPos.current;
+        if (prev) {
+          const moved = (prev.latitude - next.latitude) ** 2 + (prev.longitude - next.longitude) ** 2;
+          if (moved > 1e-10) {
+            Animated.timing(heading, { toValue: bearingBetween(prev, next), duration: 900, useNativeDriver: true }).start();
+          }
         }
       }
+      prevPos.current = next;
+      if (!userMovedRef.current) mapRef.current?.animateCamera({ center: next }, { duration: 800 });
+      return;
     }
-    prevPos.current = next;
-    if (!userMoved) {
-      mapRef.current?.animateCamera({ center: next }, { duration: 800 });
+
+    // Route mode: project the fix onto the line and work out how fast to
+    // dead-reckon forward from it.
+    const coords = coordsRef.current;
+    const cum = cumRef.current;
+    if (coords.length < 2) return;
+
+    const along = projectDistanceAlong({ latitude: position.lat, longitude: position.lng }, coords, cum);
+    const fixTime = position.recordedAt ? new Date(position.recordedAt).getTime() : Date.now();
+
+    // Prefer the device's reported speed; when it's missing or zero, derive it
+    // from how far along the route we've advanced since the previous fix —
+    // more reliable for prediction than a single instantaneous read.
+    const prevAlong = fixAlongRef.current;
+    const prevTime = fixTimeRef.current;
+    let speedMps = position.speedKmh != null && position.speedKmh > 0 ? position.speedKmh / 3.6 : 0;
+    if (speedMps === 0 && prevAlong != null && fixTime > prevTime) {
+      const derived = (along - prevAlong) / ((fixTime - prevTime) / 1000);
+      if (derived > 0) speedMps = derived;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- react only to a new position
-  }, [position?.lat, position?.lng]);
+    speedMps = Math.max(0, Math.min(MAX_SPEED_MPS, speedMps));
+
+    fixAlongRef.current = along;
+    fixTimeRef.current = fixTime;
+    speedMpsRef.current = speedMps;
+
+    if (!placed.current) {
+      placed.current = true;
+      displayAlongRef.current = along;
+      cursorRef.current = 0;
+      const p = pointAtDistance(along, coords, cum, 0);
+      cursorRef.current = p.cursor;
+      busCoord.setValue({ latitude: p.latitude, longitude: p.longitude, latitudeDelta: 0, longitudeDelta: 0 });
+      unwrappedHeadingRef.current = p.bearing;
+      heading.setValue(p.bearing);
+      if (!userMovedRef.current) {
+        mapRef.current?.animateCamera({ center: { latitude: p.latitude, longitude: p.longitude } }, { duration: 600 });
+      }
+    }
+  }, [position, hasPath, busCoord, heading]);
+
+  // ── The engine: a requestAnimationFrame loop that advances the drawn
+  //    position continuously between fixes, so the bus never freezes. Reads
+  //    only refs (updated by the effect above), sets the marker imperatively.
+  useEffect(() => {
+    if (!hasPath) return;
+    let raf = 0;
+    const loop = () => {
+      const coords = coordsRef.current;
+      const cum = cumRef.current;
+      if (fixAlongRef.current != null && cum.length > 1) {
+        const now = Date.now();
+        const elapsed = Math.max(0, (now - fixTimeRef.current) / 1000);
+        const routeLen = cum[cum.length - 1];
+        // Predicted position = last fix + how far we'd have travelled at the
+        // known speed since then, capped so a stalled feed can't run the bus
+        // away down the route.
+        const predicted = Math.min(
+          routeLen,
+          fixAlongRef.current + speedMpsRef.current * Math.min(elapsed, MAX_PREDICT_S),
+        );
+        // Ease the drawn distance toward the prediction — continuous forward
+        // motion, and any correction when a fresh fix lands is smoothed out.
+        displayAlongRef.current += (predicted - displayAlongRef.current) * POSITION_EASE;
+
+        const p = pointAtDistance(displayAlongRef.current, coords, cum, cursorRef.current);
+        cursorRef.current = p.cursor;
+        busCoord.setValue({ latitude: p.latitude, longitude: p.longitude, latitudeDelta: 0, longitudeDelta: 0 });
+
+        const unwrapped = unwrapHeading(unwrappedHeadingRef.current, p.bearing);
+        unwrappedHeadingRef.current = unwrapped;
+        heading.setValue(unwrapped);
+
+        if (!userMovedRef.current && now - lastCamRef.current > CAM_FOLLOW_MS) {
+          lastCamRef.current = now;
+          mapRef.current?.animateCamera(
+            { center: { latitude: p.latitude, longitude: p.longitude } },
+            { duration: CAM_FOLLOW_MS },
+          );
+        }
+      }
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [hasPath, busCoord, heading]);
 
   function recenter() {
+    userMovedRef.current = false;
+    lastCamRef.current = 0; // let the follow loop re-centre immediately
     setUserMoved(false);
     if (position) {
       mapRef.current?.animateCamera(
@@ -326,10 +548,13 @@ export function TrackingMap({
         ref={mapRef}
         style={StyleSheet.absoluteFill}
         initialRegion={initialRegion}
-        onPanDrag={() => !userMoved && setUserMoved(true)}
+        onPanDrag={() => {
+          userMovedRef.current = true;
+          if (!userMoved) setUserMoved(true);
+        }}
         onRegionChangeComplete={onRegionChangeComplete}
         minZoomLevel={6}
-        showsUserLocation={false}
+        showsUserLocation={true}
         showsMyLocationButton={false}
         toolbarEnabled={false}
         showsCompass={false}
@@ -404,6 +629,7 @@ export function TrackingMap({
           <Marker.Animated
             coordinate={busCoord as unknown as LatLng}
             anchor={{ x: 0.5, y: 0.5 }}
+            tracksViewChanges={busTracksView}
           >
             <View style={styles.busWrap}>
               <View style={styles.busShadow} />
@@ -417,23 +643,6 @@ export function TrackingMap({
               </Animated.View>
             </View>
           </Marker.Animated>
-        )}
-
-        {passengerPosition && (
-          <Marker
-            coordinate={{
-              latitude: passengerPosition.lat,
-              longitude: passengerPosition.lng,
-            }}
-            anchor={{ x: 0.5, y: 0.5 }}
-            tracksViewChanges={false}
-            title="You"
-            zIndex={1}
-          >
-            <View style={styles.youDotHalo}>
-              <View style={styles.youDot} />
-            </View>
-          </Marker>
         )}
       </MapView>
 
@@ -536,21 +745,5 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
     elevation: 4,
-  },
-  youDotHalo: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: "rgba(26,115,232,0.25)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  youDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: YOU_BLUE,
-    borderWidth: 2,
-    borderColor: "#fff",
   },
 });

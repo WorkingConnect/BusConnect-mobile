@@ -57,37 +57,15 @@ export default function TrackScreen() {
   const [notifyNear, setNotifyNear] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [sheetHeight, setSheetHeight] = useState(0);
-  const [passengerPosition, setPassengerPosition] =
-    useState<BusPosition | null>(null);
   const notifiedRef = useRef(false);
 
-  // The passenger's own position, shown as a second marker alongside the
-  // bus — foreground-only (no background permission needed; this screen is
-  // only visible while the app is open). Silently does nothing if denied,
-  // same as any other "nice to have" map layer.
+  // Ask once for foreground location so the map can draw the native
+  // "current location" dot (react-native-maps needs the runtime grant on
+  // Android; iOS gates the dot on it too). The map's showsUserLocation
+  // renders and updates the dot itself — we don't track the position in JS.
+  // Silently does nothing if denied, same as any other nice-to-have layer.
   useEffect(() => {
-    let sub: Location.LocationSubscription | null = null;
-    let cancelled = false;
-    void (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (cancelled || status !== "granted") return;
-      sub = await Location.watchPositionAsync(
-        {
-          accuracy: Location.Accuracy.Balanced,
-          timeInterval: 10_000,
-          distanceInterval: 20,
-        },
-        (loc) =>
-          setPassengerPosition({
-            lat: loc.coords.latitude,
-            lng: loc.coords.longitude,
-          }),
-      );
-    })();
-    return () => {
-      cancelled = true;
-      sub?.remove();
-    };
+    void Location.requestForegroundPermissionsAsync();
   }, []);
 
   // Route line + stops — fetched once, static.
@@ -197,7 +175,10 @@ export default function TrackScreen() {
   }, [id, refresh]);
 
   const position = useMemo<BusPosition | null>(
-    () => (live?.tracking ? { lat: live.lat, lng: live.lng } : null),
+    () =>
+      live?.tracking
+        ? { lat: live.lat, lng: live.lng, speedKmh: live.speed_kmh, recordedAt: live.recorded_at }
+        : null,
     [live],
   );
 
@@ -277,7 +258,6 @@ export default function TrackScreen() {
         route={route}
         boardingStopId={stopId ?? ""}
         position={position}
-        passengerPosition={passengerPosition}
         bottomInset={sheetHeight}
       />
 
