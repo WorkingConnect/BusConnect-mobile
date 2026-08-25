@@ -55,6 +55,10 @@ export default function TrackScreen() {
   const [tripDetail, setTripDetail] = useState<TripDetail | null>(null);
   const [crew, setCrew] = useState<TripCrew | null>(null);
   const [notifyNear, setNotifyNear] = useState(false);
+  // Hides the button entirely once notifications are permanently denied —
+  // tapping it would just silently fail (iOS/Android don't re-prompt after
+  // a denial), so there's no point offering a control that can't work.
+  const [notifyPermissionDenied, setNotifyPermissionDenied] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [sheetHeight, setSheetHeight] = useState(0);
   const notifiedRef = useRef(false);
@@ -192,10 +196,22 @@ export default function TrackScreen() {
     [live, boardingName, now],
   );
 
+  // Check current permission status once on mount (getPermissionsAsync
+  // doesn't prompt) so a previously-denied state hides the button right
+  // from the start, not just after the user taps it and gets denied again.
+  useEffect(() => {
+    void Notifications.getPermissionsAsync().then((perm) => {
+      setNotifyPermissionDenied(perm.status === "denied");
+    });
+  }, []);
+
   const toggleNotify = useCallback(async () => {
     if (!notifyNear) {
       const perm = await Notifications.requestPermissionsAsync();
-      if (perm.status !== "granted") return;
+      if (perm.status !== "granted") {
+        setNotifyPermissionDenied(perm.status === "denied");
+        return;
+      }
     }
     setNotifyNear((v) => !v);
     notifiedRef.current = false;
@@ -303,29 +319,31 @@ export default function TrackScreen() {
               <ConnectionDot connected={sheet.connected} />
             </View>
             <View style={styles.statusRowLeft}>
-              <Pressable
-                onPress={toggleNotify}
-                hitSlop={8}
-                style={[
-                  styles.notifyBtn,
-                  { borderColor: notifyNear ? theme.brand : theme.border },
-                  notifyNear && { backgroundColor: theme.brandSoft },
-                ]}
-              >
-                <Ionicons
-                  name={notifyNear ? "notifications" : "notifications-outline"}
-                  size={13}
-                  color={notifyNear ? theme.brand : theme.textSecondary}
-                />
-                <Text
+              {!notifyPermissionDenied && (
+                <Pressable
+                  onPress={toggleNotify}
+                  hitSlop={8}
                   style={[
-                    styles.notifyBtnText,
-                    { color: notifyNear ? theme.brand : theme.textSecondary },
+                    styles.notifyBtn,
+                    { borderColor: notifyNear ? theme.brand : theme.border },
+                    notifyNear && { backgroundColor: theme.brandSoft },
                   ]}
                 >
-                  {notifyNear ? "Notifying" : "Notify me"}
-                </Text>
-              </Pressable>
+                  <Ionicons
+                    name={notifyNear ? "notifications" : "notifications-outline"}
+                    size={13}
+                    color={notifyNear ? theme.brand : theme.textSecondary}
+                  />
+                  <Text
+                    style={[
+                      styles.notifyBtnText,
+                      { color: notifyNear ? theme.brand : theme.textSecondary },
+                    ]}
+                  >
+                    {notifyNear ? "Notifying" : "Notify me"}
+                  </Text>
+                </Pressable>
+              )}
               <Pressable onPress={() => setCollapsed((v) => !v)} hitSlop={8}>
                 <Ionicons
                   name={collapsed ? "chevron-up" : "chevron-down"}
@@ -617,15 +635,8 @@ const styles = StyleSheet.create({
   backBtn: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
-    elevation: 3,
   },
   routePill: {
     flex: 1,

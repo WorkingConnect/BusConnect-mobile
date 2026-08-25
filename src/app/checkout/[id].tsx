@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Image,
   Pressable,
+  ScrollView,
   StyleSheet,
   View,
 } from "react-native";
@@ -276,7 +277,7 @@ export default function CheckoutScreen() {
     return (
       <View style={{ flex: 1, backgroundColor: theme.background }}>
         {hero}
-        <View style={styles.chooseContainer}>
+        <ScrollView contentContainerStyle={styles.chooseContainer}>
           {booking && (
             <View
               style={[
@@ -540,7 +541,7 @@ export default function CheckoutScreen() {
               color={theme.textSecondary}
             />
           </Pressable>
-        </View>
+        </ScrollView>
       </View>
     );
   }
@@ -551,7 +552,7 @@ export default function CheckoutScreen() {
     return (
       <View style={{ flex: 1, backgroundColor: theme.background }}>
         {hero}
-        <View style={styles.chooseContainer}>
+        <ScrollView contentContainerStyle={styles.chooseContainer}>
           <View
             style={[
               styles.summaryCard,
@@ -611,7 +612,7 @@ export default function CheckoutScreen() {
               Choose a different payment method
             </Text>
           </Pressable>
-        </View>
+        </ScrollView>
       </View>
     );
   }
@@ -697,7 +698,11 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.85)",
     marginTop: Spacing.one,
   },
-  chooseContainer: { flex: 1, padding: Spacing.four },
+  chooseContainer: {
+    padding: Spacing.four,
+    paddingBottom: Spacing.six,
+    flexGrow: 1,
+  },
   amountLabel: { fontFamily: BrandFonts.uiRegular, fontSize: 13, textAlign: "center" },
   amountValue: {
     fontFamily: BrandFonts.headingSemiBold,

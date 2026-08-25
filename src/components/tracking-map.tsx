@@ -4,12 +4,28 @@ import MapView, {
   AnimatedRegion,
   Marker,
   Polyline,
+  type Camera,
   type Region,
 } from "react-native-maps";
+import {
+  GestureHandlerRootView,
+  PinchGestureHandler,
+  State as GestureState,
+  type PinchGestureHandlerGestureEvent,
+  type PinchGestureHandlerStateChangeEvent,
+} from "react-native-gesture-handler";
 import { Ionicons } from "@expo/vector-icons";
 import Svg, { Path, Rect } from "react-native-svg";
 import type { TripRoute } from "@/lib/api";
 import { MUTED_ANDROID_MAP_STYLE } from "@/constants/map-style";
+
+// react-native-maps' native pinch-to-zoom (Google Maps/Apple Maps' own
+// gesture recognizer) has no sensitivity setting — it's baked into the
+// native SDK. To make pinch-zoom feel slower/gentler we disable it
+// (zoomEnabled={false} below) and drive zoom from our own PinchGestureHandler
+// instead, scaling the raw pinch amount down before applying it to the
+// camera.
+const PINCH_SENSITIVITY = 0.45;
 
 export interface BusPosition {
   lat: number;
@@ -170,6 +186,21 @@ function clampToSriLanka(region: Region): Region | null {
     : null;
 }
 
+const MIN_MARKER_SCALE = 0.55;
+const MAX_MARKER_SCALE = 1.5;
+// latitudeDelta at which the bus icon renders at its natural (1x) size —
+// roughly the app's typical "just recentred" zoom level.
+const SCALE_REFERENCE_DELTA = 0.05;
+
+/** Maps a region's zoom (latitudeDelta — smaller is more zoomed in) to a
+ *  marker scale factor, clamped so the icon never disappears zoomed out or
+ *  balloons zoomed in. */
+function scaleForDelta(latitudeDelta: number): number {
+  if (!latitudeDelta || latitudeDelta <= 0) return 1;
+  const raw = SCALE_REFERENCE_DELTA / latitudeDelta;
+  return Math.max(MIN_MARKER_SCALE, Math.min(MAX_MARKER_SCALE, raw));
+}
+
 /** A region that frames a set of coordinates with some padding. */
 function regionFor(coords: LatLng[]): Region {
   const lats = coords.map((c) => c.latitude);
@@ -300,6 +331,11 @@ export function TrackingMap({
         longitudeDelta: 0,
       }),
   );
+  // Native map markers render at a fixed screen size regardless of zoom by
+  // default (same as Google Maps/Uber) — scaled here instead so the bus icon
+  // grows zooming in and shrinks zooming out, tracked from the region's
+  // latitudeDelta (smaller delta = more zoomed in).
+  const [markerScale] = useState(() => new Animated.Value(1));
   const [heading] = useState(() => new Animated.Value(0));
   const headingRotate = heading.interpolate({
     inputRange: [0, 360],
@@ -537,12 +573,56 @@ export function TrackingMap({
     }
   }
 
+  // Camera captured at the start of a pinch, so each gesture update applies
+  // a *scaled-down* zoom relative to a fixed baseline rather than to the
+  // previous frame — compounding a reduced-but-still-relative delta every
+  // frame would drift from what the fingers are actually doing.
+  const pinchBase = useRef<Camera | null>(null);
+
+  async function onPinchStateChange(event: PinchGestureHandlerStateChangeEvent) {
+    if (event.nativeEvent.state === GestureState.BEGAN) {
+      pinchBase.current = (await mapRef.current?.getCamera()) ?? null;
+    }
+  }
+
+  function onPinchEvent(event: PinchGestureHandlerGestureEvent) {
+    const base = pinchBase.current;
+    if (!base) return;
+    // nativeEvent.scale is cumulative since the gesture began, not
+    // incremental — dampen how much of that reaches the camera.
+    const eased = 1 + (event.nativeEvent.scale - 1) * PINCH_SENSITIVITY;
+    if (Platform.OS === "ios") {
+      // Apple Maps' camera is altitude-driven (meters above ground) —
+      // smaller altitude = more zoomed in, so scale divides rather than adds.
+      mapRef.current?.setCamera({ altitude: (base.altitude ?? 8000) / eased });
+    } else {
+      // Google Maps' zoom is log2-scaled — doubling the on-screen size of
+      // things is +1 zoom level.
+      mapRef.current?.setCamera({ zoom: (base.zoom ?? 12) + Math.log2(eased) });
+    }
+  }
+
   function onRegionChangeComplete(region: Region) {
     const clamped = clampToSriLanka(region);
     if (clamped) mapRef.current?.animateToRegion(clamped, 300);
+    Animated.timing(markerScale, {
+      toValue: scaleForDelta((clamped ?? region).latitudeDelta),
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
   }
 
+  // Set the marker's starting size to match wherever the map actually opens
+  // (a route-wide overview vs. a close-in fix on the bus render very
+  // differently) instead of always starting at 1x and jumping on first pan.
+  useEffect(() => {
+    markerScale.setValue(scaleForDelta(initialRegion.latitudeDelta));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- initial only
+  }, []);
+
   return (
+    <GestureHandlerRootView style={StyleSheet.absoluteFill}>
+    <PinchGestureHandler onGestureEvent={onPinchEvent} onHandlerStateChange={(e) => void onPinchStateChange(e)}>
     <View style={StyleSheet.absoluteFill}>
       <MapView
         ref={mapRef}
@@ -554,6 +634,7 @@ export function TrackingMap({
         }}
         onRegionChangeComplete={onRegionChangeComplete}
         minZoomLevel={6}
+        zoomEnabled={false}
         showsUserLocation={true}
         showsMyLocationButton={false}
         toolbarEnabled={false}
@@ -631,7 +712,9 @@ export function TrackingMap({
             anchor={{ x: 0.5, y: 0.5 }}
             tracksViewChanges={busTracksView}
           >
-            <View style={styles.busWrap}>
+            <Animated.View
+              style={[styles.busWrap, { transform: [{ scale: markerScale }] }]}
+            >
               <View style={styles.busShadow} />
               <Animated.View
                 style={[
@@ -641,7 +724,7 @@ export function TrackingMap({
               >
                 <BusVehicleIcon />
               </Animated.View>
-            </View>
+            </Animated.View>
           </Marker.Animated>
         )}
       </MapView>
@@ -672,6 +755,8 @@ export function TrackingMap({
         </Pressable>
       </View>
     </View>
+    </PinchGestureHandler>
+    </GestureHandlerRootView>
   );
 }
 
