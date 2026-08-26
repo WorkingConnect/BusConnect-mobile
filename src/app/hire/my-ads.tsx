@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Alert, FlatList, Image, Pressable, StyleSheet, View } from "react-native";
 import { Text } from "@/components/ui/text";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import { useTheme } from "@/hooks/use-theme";
 import { useAuth } from "@/lib/auth";
-import { listMyHireListings, type HireListing } from "@/lib/hire-listings";
+import { listMyHireListings, formatBusType, formatPrice, type HireListing } from "@/lib/hire-listings";
 import { archiveHireListing, deleteHireListing, ApiError } from "@/lib/api";
 import { Spacing, BottomTabInset, BrandFonts } from "@/constants/theme";
 
@@ -205,13 +205,37 @@ function AdRow({
   onToggleArchived: () => void;
   onDelete: () => void;
 }) {
+  const thumb = listing.images[0];
+  const metaParts = [
+    formatBusType(listing.bus_type) ?? listing.bus_type,
+    `${listing.seat_count} seats`,
+    listing.is_ac ? "A/C" : "Non-A/C",
+  ];
+
   return (
     <View style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
       <View style={styles.cardTop}>
-        <Text style={[styles.cardTitle, { color: theme.text }]} numberOfLines={1}>
-          {listing.title}
-        </Text>
-        <ReviewBadge listing={listing} theme={theme} />
+        {thumb ? (
+          <Image source={{ uri: thumb }} style={styles.thumb} />
+        ) : (
+          <View style={[styles.thumb, styles.thumbFallback, { backgroundColor: theme.brand }]}>
+            <Ionicons name="bus" size={22} color="rgba(255,255,255,0.5)" />
+          </View>
+        )}
+        <View style={styles.cardInfo}>
+          <View style={styles.cardTitleRow}>
+            <Text style={[styles.cardTitle, { color: theme.text }]} numberOfLines={1}>
+              {listing.title}
+            </Text>
+            <ReviewBadge listing={listing} theme={theme} />
+          </View>
+          <Text style={[styles.metaText, { color: theme.textSecondary }]} numberOfLines={1}>
+            {metaParts.join(" · ")}
+          </Text>
+          <Text style={[styles.priceText, { color: theme.brand }]} numberOfLines={1}>
+            {formatPrice(listing.price_amount, listing.price_type)}
+          </Text>
+        </View>
       </View>
 
       <View style={styles.actionRow}>
@@ -294,13 +318,19 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
     gap: Spacing.two,
   },
-  cardTop: { flexDirection: "row", alignItems: "center", gap: Spacing.two },
+  cardTop: { flexDirection: "row", gap: Spacing.three },
+  thumb: { width: 64, height: 64, borderRadius: 12 },
+  thumbFallback: { alignItems: "center", justifyContent: "center" },
+  cardInfo: { flex: 1, justifyContent: "center", gap: 3 },
+  cardTitleRow: { flexDirection: "row", alignItems: "center", gap: Spacing.two },
   cardTitle: {
     fontFamily: BrandFonts.headingSemiBold,
     fontSize: 15,
     fontWeight: "700",
     flex: 1,
   },
+  metaText: { fontFamily: BrandFonts.uiRegular, fontSize: 12 },
+  priceText: { fontFamily: BrandFonts.headingSemiBold, fontSize: 13, fontWeight: "800" },
   badge: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 },
   badgeText: { fontFamily: BrandFonts.uiSemiBold, fontSize: 11, fontWeight: "600" },
   actionRow: { flexDirection: "row", gap: Spacing.two },

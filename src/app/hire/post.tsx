@@ -12,7 +12,7 @@ import {
   View,
 } from "react-native";
 import { Text } from "@/components/ui/text";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
@@ -60,6 +60,7 @@ type PickerKey = "busType" | "condition" | "priceType" | "province" | "district"
  *  else's ad; the API would reject the write either way. */
 export default function HireListingFormScreen() {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const { session, loading: authLoading } = useAuth();
   const { id: rawId } = useLocalSearchParams<{ id?: string }>();
   const id = typeof rawId === "string" && rawId.length > 0 ? rawId : undefined;
@@ -858,12 +859,12 @@ export default function HireListingFormScreen() {
 
       <Modal visible={previewOpen} animationType="slide" onRequestClose={() => setPreviewOpen(false)}>
         <View style={{ flex: 1, backgroundColor: theme.background }}>
-          <SafeAreaView edges={["top"]} style={[styles.previewHero, { backgroundColor: theme.brand }]}>
+          <View style={[styles.previewHero, { backgroundColor: theme.brand, paddingTop: insets.top + Spacing.three }]}>
             <Text style={styles.heroTitle}>Preview</Text>
             <Pressable onPress={() => setPreviewOpen(false)} hitSlop={8} style={styles.backButton}>
               <Ionicons name="close" size={22} color="#fff" />
             </Pressable>
-          </SafeAreaView>
+          </View>
           <ScrollView contentContainerStyle={styles.previewContainer}>
             {images.length > 0 ? (
               <Image source={{ uri: images[0] }} style={styles.previewImage} />
@@ -890,8 +891,8 @@ export default function HireListingFormScreen() {
             {previewBadges.length > 0 && (
               <View style={styles.badgeRow}>
                 {previewBadges.map((b) => (
-                  <View key={b} style={[styles.badge, { backgroundColor: theme.backgroundSelected }]}>
-                    <Text style={[styles.badgeText, { color: theme.brand }]}>{b}</Text>
+                  <View key={b} style={[styles.badge, { backgroundColor: theme.background }]}>
+                    <Text style={[styles.badgeText, { color: theme.text }]}>{b}</Text>
                   </View>
                 ))}
               </View>
@@ -902,7 +903,7 @@ export default function HireListingFormScreen() {
                 <Text style={[styles.previewSectionTitle, { color: theme.text }]}>Features & Facilities</Text>
                 <View style={styles.chipWrapRow}>
                   {features.map((f) => (
-                    <View key={f} style={[styles.chip, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+                    <View key={f} style={[styles.chip, { backgroundColor: theme.background }]}>
                       <Text style={[styles.chipText, { color: theme.text }]}>{formatFeature(f)}</Text>
                     </View>
                   ))}
@@ -915,7 +916,7 @@ export default function HireListingFormScreen() {
                 <Text style={[styles.previewSectionTitle, { color: theme.text }]}>Suitable For</Text>
                 <View style={styles.chipWrapRow}>
                   {suitableFor.map((s) => (
-                    <View key={s} style={[styles.chip, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+                    <View key={s} style={[styles.chip, { backgroundColor: theme.background }]}>
                       <Text style={[styles.chipText, { color: theme.text }]}>{formatSuitableFor(s)}</Text>
                     </View>
                   ))}
@@ -1258,7 +1259,7 @@ const styles = StyleSheet.create({
   previewSection: { marginTop: Spacing.three, gap: Spacing.one },
   previewSectionTitle: { fontFamily: BrandFonts.uiSemiBold, fontSize: 13, fontWeight: "700" },
   chipWrapRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 4 },
-  chip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
+  chip: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
   chipText: { fontFamily: BrandFonts.uiMedium, fontSize: 12 },
   previewDescription: { fontSize: 14, lineHeight: 20 },
 });
