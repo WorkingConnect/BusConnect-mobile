@@ -73,6 +73,7 @@ export const HIRE_DRIVER_OPTIONS: { value: string; label: string }[] = [
 export const HIRE_CONTACT_METHODS: { value: string; label: string }[] = [
   { value: "call", label: "Call" },
   { value: "whatsapp", label: "WhatsApp" },
+  { value: "both", label: "Both" },
 ];
 
 export const HIRE_FEATURES: { value: string; label: string }[] = [
@@ -132,6 +133,28 @@ export function formatPrice(amount: number, priceType: string): string {
   const formatted = `LKR ${amount.toLocaleString("en-LK")}`;
   if (priceType === "negotiable") return `${formatted} (Negotiable)`;
   return `${formatted} / ${formatPriceType(priceType) ?? priceType}`;
+}
+
+/** Which contact buttons a listing's detail page should show. No
+ * preference set (older listings) keeps the old behavior of showing
+ * whichever contact info exists. A preference that needs WhatsApp but has
+ * no WhatsApp number on file falls back to Call rather than showing a
+ * dead button. */
+export function getContactVisibility(listing: {
+  contact_whatsapp: string | null;
+  preferred_contact_method: string | null;
+}): { showCall: boolean; showWhatsapp: boolean } {
+  const hasWhatsapp = !!listing.contact_whatsapp;
+  switch (listing.preferred_contact_method) {
+    case "call":
+      return { showCall: true, showWhatsapp: false };
+    case "whatsapp":
+      return hasWhatsapp ? { showCall: false, showWhatsapp: true } : { showCall: true, showWhatsapp: false };
+    case "both":
+      return { showCall: true, showWhatsapp: hasWhatsapp };
+    default:
+      return { showCall: true, showWhatsapp: hasWhatsapp };
+  }
 }
 
 /** Public read under RLS (0092: moderation_status = 'approved' and not

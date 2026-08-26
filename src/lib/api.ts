@@ -563,7 +563,7 @@ export interface HireListingInput {
   contactName: string;
   contactPhone: string;
   contactWhatsapp?: string;
-  preferredContactMethod?: "call" | "whatsapp";
+  preferredContactMethod?: "call" | "whatsapp" | "both";
   driverIncluded?: "included" | "not_included" | "on_request";
   images?: string[];
 }

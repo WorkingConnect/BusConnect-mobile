@@ -22,6 +22,7 @@ import {
   formatDriverIncluded,
   formatFeature,
   formatSuitableFor,
+  getContactVisibility,
   type HireListing,
 } from "@/lib/hire-listings";
 import { Banner } from "@/components/banner";
@@ -37,6 +38,14 @@ function formatDate(iso: string) {
     month: "short",
     year: "numeric",
   });
+}
+
+// Deep-linking (or a cold start) straight into this screen leaves no back
+// history — router.back() would then throw the "GO_BACK not handled"
+// warning, so fall back to the Hire tab instead.
+function goBack() {
+  if (router.canGoBack()) router.back();
+  else router.replace("/(tabs)/hire");
 }
 
 export default function HireListingScreen() {
@@ -78,7 +87,7 @@ export default function HireListingScreen() {
   const backButton = (
     <SafeAreaView edges={["top"]} style={[styles.hero, { backgroundColor: theme.brand }]}>
       <View style={styles.heroTopRow}>
-        <Pressable onPress={() => router.back()} hitSlop={8} style={styles.backButton}>
+        <Pressable onPress={goBack} hitSlop={8} style={styles.backButton}>
           <Ionicons name="chevron-back" size={22} color="#fff" />
         </Pressable>
         <Text style={styles.heroTitle} numberOfLines={1}>
@@ -138,6 +147,8 @@ export default function HireListingScreen() {
     listing.min_hire_duration ? { label: "Minimum Hire Duration", value: listing.min_hire_duration } : null,
     listing.area ? { label: "Service Area", value: listing.area } : null,
   ].filter((r): r is { label: string; value: string } => !!r);
+
+  const { showCall, showWhatsapp } = getContactVisibility(listing);
 
   function callPoster() {
     if (listing) Linking.openURL(`tel:${listing.contact_phone}`);
@@ -308,11 +319,13 @@ export default function HireListingScreen() {
           { backgroundColor: theme.backgroundElement, borderTopColor: theme.border },
         ]}
       >
-        <Pressable onPress={callPoster} style={[styles.callButton, { backgroundColor: theme.brand }]}>
-          <Ionicons name="call" size={17} color="#fff" />
-          <Text style={styles.callButtonText}>Call</Text>
-        </Pressable>
-        {listing.contact_whatsapp && (
+        {showCall && (
+          <Pressable onPress={callPoster} style={[styles.callButton, { backgroundColor: theme.brand }]}>
+            <Ionicons name="call" size={17} color="#fff" />
+            <Text style={styles.callButtonText}>Call</Text>
+          </Pressable>
+        )}
+        {showWhatsapp && (
           <Pressable
             onPress={whatsAppPoster}
             style={[styles.whatsAppButton, { borderColor: "#25D366" }]}

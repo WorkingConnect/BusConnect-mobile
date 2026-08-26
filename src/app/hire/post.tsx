@@ -54,6 +54,14 @@ const MAX_CUSTOM_FEATURE_LENGTH = 40;
 type Theme = ReturnType<typeof useTheme>;
 type PickerKey = "busType" | "condition" | "priceType" | "province" | "district" | "contactMethod" | "driverIncluded";
 
+// Deep-linking (or a cold start) straight into this screen leaves no back
+// history — router.back() would then throw the "GO_BACK not handled"
+// warning, so fall back to the Hire tab instead.
+function goBack() {
+  if (router.canGoBack()) router.back();
+  else router.replace("/(tabs)/hire");
+}
+
 /** Post/edit form for a single Hire-a-Bus listing. Editing is keyed off an
  *  optional `?id=` — the listing is fetched and ownership-checked client
  *  side purely so the UI doesn't even offer an edit affordance for someone
@@ -368,7 +376,7 @@ export default function HireListingFormScreen() {
   const hero = (
     <SafeAreaView edges={["top"]} style={[styles.hero, { backgroundColor: theme.brand }]}>
       <View style={styles.heroTopRow}>
-        <Pressable onPress={() => router.back()} hitSlop={8} style={styles.backButton}>
+        <Pressable onPress={goBack} hitSlop={8} style={styles.backButton}>
           <Ionicons name="chevron-back" size={22} color="#fff" />
         </Pressable>
         <Text style={styles.heroTitle}>{isEdit ? "Edit ad" : "Post an ad"}</Text>

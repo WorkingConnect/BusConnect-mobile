@@ -10,6 +10,14 @@ import { listMyHireListings, formatBusType, formatPrice, type HireListing } from
 import { archiveHireListing, deleteHireListing, ApiError } from "@/lib/api";
 import { Spacing, BottomTabInset, BrandFonts } from "@/constants/theme";
 
+// Deep-linking (or a cold start) straight into this screen leaves no back
+// history — router.back() would then throw the "GO_BACK not handled"
+// warning, so fall back to the Hire tab instead.
+function goBack() {
+  if (router.canGoBack()) router.back();
+  else router.replace("/(tabs)/hire");
+}
+
 export default function MyHireAdsScreen() {
   const theme = useTheme();
   const { session, loading: authLoading } = useAuth();
@@ -81,7 +89,7 @@ export default function MyHireAdsScreen() {
   const hero = (
     <SafeAreaView edges={["top"]} style={[styles.hero, { backgroundColor: theme.brand }]}>
       <View style={styles.heroTopRow}>
-        <Pressable onPress={() => router.back()} hitSlop={8} style={styles.backButton}>
+        <Pressable onPress={goBack} hitSlop={8} style={styles.backButton}>
           <Ionicons name="chevron-back" size={22} color="#fff" />
         </Pressable>
         <Text style={styles.heroTitle}>My Ads</Text>
