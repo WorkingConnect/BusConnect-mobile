@@ -5,7 +5,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  TextInput,
   View,
 } from "react-native";
 import { Text } from "@/components/ui/text";
@@ -465,7 +464,6 @@ function RateTripButton({
 }) {
   const [state, setState] = useState<RateState>("loading");
   const [rating, setRating] = useState(0);
-  const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -489,7 +487,7 @@ function RateTripButton({
   function submit() {
     setError(null);
     setState("busy");
-    submitReview(accessToken, { tripId, rating, text: text.trim() || undefined })
+    submitReview(accessToken, { tripId, rating })
       .then(() => setState("rated"))
       .catch((e) => {
         setError(e instanceof ApiError ? e.message : "Could not submit your rating. Try again.");
@@ -519,7 +517,7 @@ function RateTripButton({
     return (
       <Pressable
         onPress={() => setState("open")}
-        style={[styles.primaryButton, { backgroundColor: theme.brand, flex: 0, alignSelf: "flex-start", paddingHorizontal: Spacing.three }]}
+        style={[styles.primaryButton, { backgroundColor: theme.brand }]}
       >
         <Text style={styles.primaryButtonText}>Rate this trip</Text>
       </Pressable>
@@ -537,25 +535,6 @@ function RateTripButton({
       <View style={{ marginTop: Spacing.two }}>
         <StarRatingInput value={rating} onChange={setRating} disabled={state === "busy"} />
       </View>
-      <TextInput
-        value={text}
-        onChangeText={setText}
-        editable={state !== "busy"}
-        maxLength={1000}
-        placeholder="Add a comment (optional)"
-        placeholderTextColor={theme.textSecondary}
-        multiline
-        style={{
-          marginTop: Spacing.three,
-          borderWidth: 1,
-          borderColor: theme.border,
-          borderRadius: 10,
-          padding: Spacing.two,
-          color: theme.text,
-          minHeight: 60,
-          textAlignVertical: "top",
-        }}
-      />
       {error && (
         <Text style={{ color: "#dc2626", fontSize: 13, marginTop: Spacing.two }}>{error}</Text>
       )}

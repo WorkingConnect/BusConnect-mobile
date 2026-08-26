@@ -27,6 +27,7 @@ import {
 } from "@/lib/hire-listings";
 import { Banner } from "@/components/banner";
 import { Spacing, BrandFonts } from "@/constants/theme";
+import { stripCountryCode } from "@/lib/phone";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const GALLERY_HEIGHT = (SCREEN_WIDTH * 9) / 16;
@@ -156,7 +157,10 @@ export default function HireListingScreen() {
 
   function whatsAppPoster() {
     if (listing?.contact_whatsapp) {
-      Linking.openURL(`https://wa.me/${listing.contact_whatsapp.replace(/\D/g, "")}`);
+      // Posters type the local format ("0771234567"); wa.me needs the
+      // country code with no leading 0, so strip whatever prefix is there
+      // and add +94's digits back on.
+      Linking.openURL(`https://wa.me/94${stripCountryCode(listing.contact_whatsapp)}`);
     }
   }
 

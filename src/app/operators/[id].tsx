@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Image, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { Text } from "@/components/ui/text";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -8,6 +8,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { getOperatorProfile, type OperatorProfile } from "@/lib/operators";
 import { formatDuration } from "@/lib/popular-routes";
 import { Banner } from "@/components/banner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Spacing, BrandFonts } from "@/constants/theme";
 
 /** Same calendar-day basis lib/popular-routes.ts uses, so "today"/"next trip" always agree. */
@@ -116,9 +117,30 @@ export default function OperatorProfileScreen() {
     return (
       <View style={{ flex: 1, backgroundColor: theme.background }}>
         {hero}
-        <View style={styles.center}>
-          <ActivityIndicator color={theme.brand} />
-        </View>
+        <ScrollView contentContainerStyle={{ padding: Spacing.three, paddingBottom: Spacing.six }}>
+          <View style={styles.section}>
+            <Skeleton style={{ width: 160, height: 16, alignSelf: "center" }} />
+            {[0, 1, 2].map((i) => (
+              <View
+                key={i}
+                style={[styles.routeCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
+              >
+                <View style={styles.routeCardTopRow}>
+                  <View style={{ flex: 1, gap: 8 }}>
+                    <Skeleton style={{ width: "70%", height: 14 }} />
+                    <Skeleton style={{ width: "50%", height: 11 }} />
+                    <Skeleton style={{ width: "60%", height: 11 }} />
+                  </View>
+                  <Skeleton style={styles.routeThumb} />
+                </View>
+                <View style={[styles.routeFooterRow, { borderTopColor: theme.border }]}>
+                  <Skeleton style={{ width: 70, height: 15 }} />
+                  <Skeleton style={{ width: 90, height: 28, borderRadius: 10 }} />
+                </View>
+              </View>
+            ))}
+          </View>
+        </ScrollView>
       </View>
     );
   }

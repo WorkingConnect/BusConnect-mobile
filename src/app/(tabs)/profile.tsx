@@ -125,7 +125,6 @@ export default function ProfileScreen() {
             theme={theme}
           />
 
-          <PaymentSection theme={theme} />
           <PreferencesSection theme={theme} session={session} />
           <SupportSection theme={theme} />
 
@@ -377,6 +376,7 @@ function ProfileForm({
               value={profile.email}
               theme={theme}
               last
+              stack
             />
           )}
           {saved && (
@@ -395,72 +395,57 @@ function ReadOnlyRow({
   value,
   theme,
   last,
+  stack,
 }: {
   label: string;
   value: string | null | undefined;
   theme: ReturnType<typeof useTheme>;
   last?: boolean;
+  /** Label above value instead of side-by-side — for values too long to sit
+   *  next to the label without an awkward mid-word wrap (e.g. an email). */
+  stack?: boolean;
 }) {
+  const rowStyle = [
+    stack ? styles.readOnlyRowStack : styles.readOnlyRow,
+    !last && {
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border,
+    },
+  ];
+
+  if (stack) {
+    return (
+      <View style={rowStyle}>
+        <Text style={{ color: theme.textSecondary, fontSize: 13 }}>{label}</Text>
+        <Text
+          style={{
+            color: theme.text,
+            fontWeight: "600",
+            fontSize: 14,
+            marginTop: 4,
+          }}
+        >
+          {value || "—"}
+        </Text>
+      </View>
+    );
+  }
+
   return (
-    <View
-      style={[
-        styles.readOnlyRow,
-        !last && {
-          borderBottomWidth: StyleSheet.hairlineWidth,
-          borderBottomColor: theme.border,
-        },
-      ]}
-    >
+    <View style={rowStyle}>
       <Text style={{ color: theme.textSecondary, fontSize: 13 }}>{label}</Text>
       <Text
-        style={{ color: theme.text, fontWeight: "600", fontSize: 14 }}
-        numberOfLines={1}
+        style={{
+          color: theme.text,
+          fontWeight: "600",
+          fontSize: 14,
+          flexShrink: 1,
+          marginLeft: Spacing.two,
+          textAlign: "right",
+        }}
       >
         {value || "—"}
       </Text>
-    </View>
-  );
-}
-
-function PaymentSection({ theme }: { theme: ReturnType<typeof useTheme> }) {
-  return (
-    <View style={{ marginTop: Spacing.four }}>
-      <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>
-        Payment
-      </Text>
-      <View
-        style={[
-          styles.card,
-          {
-            backgroundColor: theme.backgroundElement,
-            borderColor: theme.border,
-            gap: 0,
-            paddingVertical: Spacing.two,
-          },
-        ]}
-      >
-        <Pressable
-          onPress={() => router.push("/payment-methods")}
-          style={styles.paymentRow}
-        >
-          <Ionicons name="card-outline" size={16} color={theme.textSecondary} />
-          <Text
-            style={{
-              color: theme.text,
-              fontWeight: "600",
-              fontSize: 14,
-              flex: 1,
-            }}
-          >
-            Add card
-          </Text>
-          <Ionicons
-            name="chevron-forward"
-            size={16}
-            color={theme.textSecondary}
-          />
-        </Pressable>
-      </View>
     </View>
   );
 }
@@ -614,9 +599,12 @@ function SupportSection({ theme }: { theme: ReturnType<typeof useTheme> }) {
           style={styles.linkRow}
         >
           <Ionicons name="star-outline" size={16} color={theme.textSecondary} />
-          <Text style={{ color: theme.text, fontWeight: "600", fontSize: 14 }}>
+          <Text
+            style={{ color: theme.text, fontWeight: "600", fontSize: 14, flex: 1 }}
+          >
             Rate us
           </Text>
+          <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
         </Pressable>
         <View
           style={[styles.compactDivider, { backgroundColor: theme.border }]}
@@ -630,9 +618,12 @@ function SupportSection({ theme }: { theme: ReturnType<typeof useTheme> }) {
             size={16}
             color={theme.textSecondary}
           />
-          <Text style={{ color: theme.text, fontWeight: "600", fontSize: 14 }}>
+          <Text
+            style={{ color: theme.text, fontWeight: "600", fontSize: 14, flex: 1 }}
+          >
             Help center
           </Text>
+          <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
         </Pressable>
       </View>
     </View>
@@ -738,11 +729,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
-  paymentRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.two,
-    paddingVertical: Spacing.two,
+  readOnlyRowStack: {
+    paddingVertical: Spacing.three,
   },
   sectionLabel: {
     fontFamily: BrandFonts.uiSemiBold,
