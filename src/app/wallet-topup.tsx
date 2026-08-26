@@ -278,53 +278,13 @@ export default function WalletTopupScreen() {
           })}
         </View>
 
-        <Text
-          style={[
-            styles.sectionLabel,
-            { color: theme.textSecondary, marginTop: Spacing.five },
-          ]}
-        >
-          Pay from
-        </Text>
-        <Text
-          style={{ color: theme.textSecondary, fontSize: 13, marginTop: 2 }}
-        >
-          No saved cards. You can add and pay with a new card.
-        </Text>
-
         {error && (
           <Text
-            style={{ color: "#dc2626", fontSize: 13, marginTop: Spacing.two }}
+            style={{ color: "#dc2626", fontSize: 13, marginTop: Spacing.five }}
           >
             {error}
           </Text>
         )}
-
-        <Pressable
-          onPress={startCheckout}
-          disabled={!validAmount}
-          style={[
-            styles.newCardCard,
-            {
-              borderColor: theme.brand,
-              backgroundColor: theme.backgroundSelected,
-              opacity: validAmount ? 1 : 0.5,
-            },
-          ]}
-        >
-          <Ionicons name="card-outline" size={28} color={theme.brand} />
-          <Text
-            style={{
-              fontFamily: BrandFonts.uiSemiBold,
-              color: theme.brand,
-              fontWeight: "700",
-              fontSize: 15,
-              marginTop: Spacing.two,
-            }}
-          >
-            Pay with New Card
-          </Text>
-        </Pressable>
 
         <Pressable
           onPress={startCheckout}
@@ -405,15 +365,6 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: Spacing.three,
     paddingVertical: 8,
-  },
-  newCardCard: {
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1.5,
-    borderStyle: "dashed",
-    borderRadius: 18,
-    paddingVertical: Spacing.six,
-    marginTop: Spacing.three,
   },
   submitButton: {
     borderRadius: 14,
