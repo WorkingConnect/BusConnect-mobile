@@ -5,6 +5,8 @@
  * (search, trip detail, seat map) need no token. Writes (holds, bookings)
  * require the caller to pass the Supabase access token.
  */
+import type { HireListing } from "./hire-listings";
+
 const API_BASE =
   process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://localhost:3000/api";
 
@@ -526,6 +528,73 @@ export function unregisterPushToken(accessToken: string, token: string) {
   return request<{ ok: true }>("/notifications/push-token", {
     method: "DELETE",
     body: JSON.stringify({ token }),
+    accessToken,
+  });
+}
+
+// ── Bus hire listings — writes only; browsing/mine reads are direct-Supabase
+//    (see lib/hire-listings.ts), same convention as locations/popular routes. ──
+
+export interface HireListingInput {
+  title: string;
+  description?: string;
+  busType:
+    | "mini_bus"
+    | "midi_bus"
+    | "standard_bus"
+    | "luxury_coach"
+    | "super_luxury_coach"
+    | "double_decker"
+    | "other";
+  condition?: "new" | "good" | "average";
+  seatCount: number;
+  isAc: boolean;
+  busModel?: string;
+  manufacturingYear?: number;
+  features?: string[];
+  priceAmount: number;
+  priceType: "per_day" | "per_trip" | "per_km" | "negotiable";
+  minHireDuration?: string;
+  area?: string;
+  suitableFor?: string[];
+  province: string;
+  district: string;
+  city: string;
+  contactName: string;
+  contactPhone: string;
+  contactWhatsapp?: string;
+  preferredContactMethod?: "call" | "whatsapp";
+  driverIncluded?: "included" | "not_included" | "on_request";
+  images?: string[];
+}
+
+export function createHireListing(accessToken: string, input: HireListingInput) {
+  return request<HireListing>("/hire-listings", {
+    method: "POST",
+    body: JSON.stringify(input),
+    accessToken,
+  });
+}
+
+export function updateHireListing(accessToken: string, id: string, input: HireListingInput) {
+  return request<HireListing>(`/hire-listings/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+    accessToken,
+  });
+}
+
+export function archiveHireListing(accessToken: string, id: string, archived: boolean) {
+  return request<HireListing>(`/hire-listings/${id}/archive`, {
+    method: "PATCH",
+    body: JSON.stringify({ archived }),
+    accessToken,
+  });
+}
+
+export function deleteHireListing(accessToken: string, id: string) {
+  return request<{ ok: true }>(`/hire-listings/${id}`, {
+    method: "DELETE",
     accessToken,
   });
 }

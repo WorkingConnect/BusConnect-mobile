@@ -20,3 +20,19 @@ export async function uploadPassengerPhoto(userId: string, uri: string): Promise
 
   return supabase.storage.from("passenger-photos").getPublicUrl(path).data.publicUrl;
 }
+
+/** Same shape as uploadPassengerPhoto — a listing photo isn't sensitive
+ * either, public bucket, folder-per-user (see 0088_bus_hire_listings.sql). */
+export async function uploadBusHirePhoto(userId: string, uri: string): Promise<string> {
+  const ext = uri.split(".").pop()?.split("?")[0] || "jpg";
+  const path = `${userId}/${Date.now()}-${Math.round(Math.random() * 1e6)}.${ext}`;
+  const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+  const contentType = ext === "png" ? "image/png" : "image/jpeg";
+
+  const { error } = await supabase.storage
+    .from("bus-hire-photos")
+    .upload(path, decode(base64), { upsert: true, contentType });
+  if (error) throw error;
+
+  return supabase.storage.from("bus-hire-photos").getPublicUrl(path).data.publicUrl;
+}
