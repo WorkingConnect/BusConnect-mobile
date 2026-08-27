@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Image,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -622,6 +623,25 @@ function SupportSection({ theme }: { theme: ReturnType<typeof useTheme> }) {
             style={{ color: theme.text, fontWeight: "600", fontSize: 14, flex: 1 }}
           >
             Help center
+          </Text>
+          <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
+        </Pressable>
+        <View
+          style={[styles.compactDivider, { backgroundColor: theme.border }]}
+        />
+        <Pressable
+          onPress={() => void Linking.openURL("https://busconnect.lk/en/privacy")}
+          style={styles.linkRow}
+        >
+          <Ionicons
+            name="shield-checkmark-outline"
+            size={16}
+            color={theme.textSecondary}
+          />
+          <Text
+            style={{ color: theme.text, fontWeight: "600", fontSize: 14, flex: 1 }}
+          >
+            Privacy policy
           </Text>
           <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
         </Pressable>

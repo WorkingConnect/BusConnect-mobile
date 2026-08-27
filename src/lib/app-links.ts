@@ -1,14 +1,11 @@
 import { Linking, Platform } from "react-native";
 
-// TODO: replace with the real numeric App Store id once BusConnect is
-// published (Apple only allocates one after the app is created in App Store
-// Connect) — format is "id0000000000".
-const IOS_APP_STORE_ID = "";
+// App Store Connect app id (eas.json submit.production.ios.ascAppId).
+const IOS_APP_STORE_ID = "id6794645415";
 const ANDROID_PACKAGE = "lk.busconnect.app";
 
-// TODO: replace with BusConnect's real WhatsApp Business support number,
-// digits only with country code, no "+" (e.g. "94771234567").
-const SUPPORT_WHATSAPP_NUMBER = "94000000000";
+// Same number used for phone support on the web app's Help Centre page.
+const SUPPORT_WHATSAPP_NUMBER = "94764670645";
 
 export async function openStoreReview(): Promise<void> {
   const url =
