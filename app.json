@@ -19,6 +19,7 @@
     },
     "android": {
       "package": "lk.busconnect.app",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#004AAD",
         "foregroundImage": "./assets/images/android-icon-foreground.png"
