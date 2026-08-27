@@ -14,6 +14,8 @@ export interface MyBooking {
   code: string;
   seats: string[];
   amount: number;
+  refundedSeats: string[];
+  refundedAmount: number;
   status: string;
   createdAt: string;
   departAt: string | null;
@@ -35,6 +37,8 @@ interface BookingRow {
   from_stop_id: string;
   seats: string[];
   amount: number;
+  refunded_seats: string[];
+  refunded_amount: number;
   status: string;
   created_at: string;
   trip: {
@@ -58,7 +62,7 @@ export async function listMyBookings(): Promise<MyBooking[]> {
   const { data, error } = await supabase
     .from("bookings")
     .select(
-      `id, trip_id, from_stop_id, seats, amount, status, created_at,
+      `id, trip_id, from_stop_id, seats, amount, refunded_seats, refunded_amount, status, created_at,
        trip:trips ( depart_at, status, location_sharing,
          route:routes ( name ),
          bus:buses ( reg_no, bus_type:bus_types ( name, class ),
@@ -84,6 +88,8 @@ export async function listMyBookings(): Promise<MyBooking[]> {
       code: b.id.slice(0, 6).toUpperCase(),
       seats: b.seats,
       amount: Number(b.amount),
+      refundedSeats: b.refunded_seats ?? [],
+      refundedAmount: Number(b.refunded_amount ?? 0),
       status: b.status,
       createdAt: b.created_at,
       departAt: b.trip?.depart_at ?? null,

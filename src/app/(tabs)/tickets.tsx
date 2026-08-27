@@ -346,6 +346,13 @@ function TicketCard({
             theme={theme}
           />
           <Stat label="Booked on" value={dateOnly(b.createdAt)} theme={theme} />
+          {t === "confirmed" && b.refundedAmount > 0 && (
+            <Stat
+              label="Refunded"
+              value={`${money(b.refundedAmount)} (balance ${money(b.amount - b.refundedAmount)})`}
+              theme={theme}
+            />
+          )}
         </View>
 
         <View style={{ marginTop: Spacing.three, gap: Spacing.two }}>
