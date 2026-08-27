@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -19,6 +19,7 @@ import { Ionicons } from "@expo/vector-icons";
 import type { Session } from "@supabase/supabase-js";
 import { useTheme } from "@/hooks/use-theme";
 import { useThemeMode } from "@/lib/theme-mode-context";
+import { useNetworkStatus } from "@/hooks/use-network-status";
 import { useAuth } from "@/lib/auth";
 import {
   getMyProfile,
@@ -45,6 +46,9 @@ export default function ProfileScreen() {
   const { session, loading: authLoading, signOut } = useAuth();
   const [profile, setProfile] = useState<MyProfile | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadErrorOffline, setLoadErrorOffline] = useState(false);
+  const [retryTick, setRetryTick] = useState(0);
+  const isConnected = useNetworkStatus();
 
   async function handleSignOut() {
     // signOut() itself holds a brief global overlay (see root _layout.tsx)
@@ -55,13 +59,29 @@ export default function ProfileScreen() {
   useEffect(() => {
     if (!session) return;
     getMyProfile(session.access_token)
-      .then(setProfile)
-      .catch((e) =>
+      .then((p) => {
+        setProfile(p);
+        setLoadError(null);
+        setLoadErrorOffline(false);
+      })
+      .catch((e) => {
+        setLoadErrorOffline(e instanceof ApiError && e.status === 0);
         setLoadError(
           e instanceof ApiError ? e.message : "Could not reach BusConnect-api.",
-        ),
-      );
-  }, [session]);
+        );
+      });
+  }, [session, retryTick]);
+
+  // A failed load doesn't retry on its own — reconnecting alone doesn't
+  // re-run the effect above. Re-fetch as soon as the device comes back
+  // online so the quiet loading state below actually resolves.
+  const wasConnected = useRef(isConnected);
+  useEffect(() => {
+    if (loadErrorOffline && wasConnected.current === false && isConnected === true) {
+      setRetryTick((t) => t + 1);
+    }
+    wasConnected.current = isConnected;
+  }, [isConnected, loadErrorOffline]);
 
   if (authLoading) {
     return (
@@ -87,12 +107,24 @@ export default function ProfileScreen() {
     );
   }
 
-  if (loadError) {
+  // Being offline isn't a profile problem — the app-wide OfflineBanner
+  // already says so, and the effect above retries on its own once
+  // connectivity returns. Fall back to the same quiet spinner as the
+  // normal loading state instead of an alarming error banner.
+  if (loadError && !loadErrorOffline) {
     return (
       <View style={[styles.center, { backgroundColor: theme.background }]}>
         <View style={{ width: "100%", paddingHorizontal: Spacing.four }}>
           <Banner tone="error" message={loadError} />
         </View>
+      </View>
+    );
+  }
+
+  if (loadError && loadErrorOffline) {
+    return (
+      <View style={[styles.center, { backgroundColor: theme.background }]}>
+        <ActivityIndicator color={theme.brand} />
       </View>
     );
   }
