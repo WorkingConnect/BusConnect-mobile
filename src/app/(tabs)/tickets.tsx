@@ -416,21 +416,23 @@ function TicketCard({
                   View booking
                 </Text>
               </Pressable>
-              <Pressable
-                onPress={confirmDelete}
-                disabled={deleting}
-                hitSlop={8}
-                style={[
-                  styles.deleteButton,
-                  { borderColor: theme.border, opacity: deleting ? 0.5 : 1 },
-                ]}
-              >
-                {deleting ? (
-                  <ActivityIndicator color="#dc2626" size="small" />
-                ) : (
-                  <Ionicons name="trash-outline" size={18} color="#dc2626" />
-                )}
-              </Pressable>
+              {t !== "confirmed" && (
+                <Pressable
+                  onPress={confirmDelete}
+                  disabled={deleting}
+                  hitSlop={8}
+                  style={[
+                    styles.deleteButton,
+                    { borderColor: theme.border, opacity: deleting ? 0.5 : 1 },
+                  ]}
+                >
+                  {deleting ? (
+                    <ActivityIndicator color="#dc2626" size="small" />
+                  ) : (
+                    <Ionicons name="trash-outline" size={18} color="#dc2626" />
+                  )}
+                </Pressable>
+              )}
             </View>
           )}
         </View>
