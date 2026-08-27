@@ -46,7 +46,7 @@ export default function SignUpScreen() {
   async function createAccount() {
     setError(null);
     if (!NIC_RE.test(nic.trim())) {
-      setError("Enter a valid NIC — 9 digits + V/X, or 12 digits.");
+      setError("Enter a valid NIC: 9 digits + V/X, or 12 digits.");
       return;
     }
     if (password.length < 6) {

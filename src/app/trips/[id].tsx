@@ -205,7 +205,7 @@ export default function TripDetailScreen() {
     const url = `https://busconnect.lk/en/trips/${id}${query ? `?${query}` : ""}`;
     const operatorName = trip?.bus.operator?.name ?? "this trip";
     void Share.share({
-      message: `${operatorName} on BusConnect — ${url}`,
+      message: `${operatorName} on BusConnect: ${url}`,
       url,
     });
   }
@@ -325,7 +325,7 @@ export default function TripDetailScreen() {
                       )}
                     </View>
                     <Text style={{ color: theme.textSecondary, fontSize: 11, marginTop: 1 }}>
-                      {s.scheduled_at ? formatTripTime(s.scheduled_at) : "—"}
+                      {s.scheduled_at ? formatTripTime(s.scheduled_at) : "-"}
                     </Text>
                   </View>
                 </View>

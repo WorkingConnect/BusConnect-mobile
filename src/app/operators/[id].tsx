@@ -172,7 +172,7 @@ export default function OperatorProfileScreen() {
                       </Text>
                       <Text style={{ fontFamily: BrandFonts.uiRegular, color: theme.textSecondary, fontSize: 12, marginTop: 3 }}>
                         {r.departureTime && r.arrivalTime
-                          ? `${r.departureTime} — ${r.arrivalTime}`
+                          ? `${r.departureTime} - ${r.arrivalTime}`
                           : r.departureTime || "No trips scheduled"}
                       </Text>
                       <Text style={{ fontFamily: BrandFonts.uiRegular, color: theme.textSecondary, fontSize: 12, marginTop: 2 }}>

@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Animated, Platform, Pressable, StyleSheet, View } from "react-native";
+import {
+  Animated,
+  Image,
+  Platform,
+  Pressable,
+  StyleSheet,
+  View,
+} from "react-native";
 import MapView, {
   AnimatedRegion,
   Marker,
@@ -15,7 +22,6 @@ import {
   type PinchGestureHandlerStateChangeEvent,
 } from "react-native-gesture-handler";
 import { Ionicons } from "@expo/vector-icons";
-import Svg, { Path, Rect } from "react-native-svg";
 import type { TripRoute } from "@/lib/api";
 import { MUTED_ANDROID_MAP_STYLE } from "@/constants/map-style";
 
@@ -254,19 +260,20 @@ function nearestVertexIndex(point: LatLng, coords: LatLng[]): number {
   return best;
 }
 
+const BUS_ICON = require("../../assets/images/bus.png");
+
 /**
- * Top-down vehicle silhouette (nose pointing up/north) for the live bus
- * marker — Uber-style, rotates in place to its GPS heading rather than
- * sitting inside a static circular badge.
+ * Top-down vehicle image (nose pointing up/north) for the live bus marker —
+ * Uber-style, rotates in place to its GPS heading rather than sitting inside
+ * a static circular badge.
  */
 function BusVehicleIcon() {
   return (
-    <Svg width={28} height={44} viewBox="0 0 28 44">
-      <Rect x={2} y={2} width={24} height={40} rx={9} fill={BRAND} stroke="#fff" strokeWidth={2} />
-      <Path d="M14 5 L20 14 H8 Z" fill="#fff" opacity={0.9} />
-      <Rect x={6} y={17} width={16} height={13} rx={2.5} fill="#fff" opacity={0.22} />
-      <Rect x={6} y={32} width={16} height={5} rx={2} fill="#fff" opacity={0.22} />
-    </Svg>
+    <Image
+      source={BUS_ICON}
+      style={styles.busImage}
+      resizeMode="contain"
+    />
   );
 }
 
@@ -812,6 +819,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 3,
     shadowOffset: { width: 0, height: 2 },
+  },
+  busImage: {
+    width: 28,
+    height: 44,
   },
   controls: {
     position: "absolute",

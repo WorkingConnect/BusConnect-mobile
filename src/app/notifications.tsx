@@ -103,7 +103,7 @@ export default function NotificationsScreen() {
       ) : items?.length === 0 ? (
         <View style={styles.center}>
           <Ionicons name="notifications-outline" size={40} color={theme.textSecondary} />
-          <Text style={{ color: theme.textSecondary, marginTop: Spacing.three }}>Nothing yet — you&apos;re all caught up.</Text>
+          <Text style={{ color: theme.textSecondary, marginTop: Spacing.three }}>Nothing yet. You&apos;re all caught up.</Text>
         </View>
       ) : (
         <GestureHandlerRootView style={{ flex: 1 }}>

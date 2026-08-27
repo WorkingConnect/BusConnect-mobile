@@ -152,8 +152,8 @@ export default function TicketScreen() {
 
           <View style={styles.grid}>
             <View style={styles.gridRow}>
-              <Cell label="Operator" value={booking.trip?.bus?.operator?.name ?? "—"} />
-              <Cell label="Pickup point" value={booking.from_stop?.location?.name_en ?? "—"} />
+              <Cell label="Operator" value={booking.trip?.bus?.operator?.name ?? "-"} />
+              <Cell label="Pickup point" value={booking.from_stop?.location?.name_en ?? "-"} />
             </View>
             <View style={styles.gridRow}>
               <Cell label="Seats" value={booking.seats.join(", ")} />
@@ -162,7 +162,7 @@ export default function TicketScreen() {
             <View style={styles.gridRow}>
               <Cell
                 label="Departs"
-                value={booking.trip?.depart_at ? formatDateTime(booking.trip.depart_at) : "—"}
+                value={booking.trip?.depart_at ? formatDateTime(booking.trip.depart_at) : "-"}
               />
               <Cell
                 label="Amount"

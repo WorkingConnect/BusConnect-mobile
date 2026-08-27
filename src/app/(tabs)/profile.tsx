@@ -426,7 +426,7 @@ function ReadOnlyRow({
             marginTop: 4,
           }}
         >
-          {value || "—"}
+          {value || "-"}
         </Text>
       </View>
     );
@@ -445,7 +445,7 @@ function ReadOnlyRow({
           textAlign: "right",
         }}
       >
-        {value || "—"}
+        {value || "-"}
       </Text>
     </View>
   );

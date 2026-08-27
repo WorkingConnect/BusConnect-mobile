@@ -81,7 +81,7 @@ export default function DeleteAccountScreen() {
     try {
       const { data } = await supabase.auth.getSession();
       const accessToken = data.session?.access_token;
-      if (!accessToken) throw new Error("Session expired — sign in again to delete your account.");
+      if (!accessToken) throw new Error("Session expired. Sign in again to delete your account.");
       await deleteMyAccount(accessToken);
       // Don't await the full signOut() — it holds a global overlay (see
       // root _layout.tsx) open for a bit on its own; navigate right away
@@ -126,7 +126,7 @@ export default function DeleteAccountScreen() {
         <Ionicons name="trash-outline" size={26} color="#dc2626" />
       </View>
       <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-        Accounts with any booking history can&apos;t be deleted — contact support if you need that removed. If you
+        Accounts with any booking history can&apos;t be deleted. Contact support if you need that removed. If you
         have no bookings but still have a wallet balance, deleting your account queues it for a refund by bank
         transfer; you&apos;ll get an SMS once it&apos;s sent.
       </Text>

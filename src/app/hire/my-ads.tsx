@@ -61,7 +61,7 @@ export default function MyHireAdsScreen() {
   }
 
   function confirmDelete(listing: HireListing) {
-    Alert.alert("Delete this ad?", "This can't be undone — it will be permanently removed.", [
+    Alert.alert("Delete this ad?", "This can't be undone. It will be permanently removed.", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete",

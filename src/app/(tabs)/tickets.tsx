@@ -34,7 +34,7 @@ function money(n: number) {
   return `LKR ${Number(n).toLocaleString("en-LK")}`;
 }
 function dateTime(iso: string | null) {
-  if (!iso) return "—";
+  if (!iso) return "-";
   return new Date(iso).toLocaleString("en-LK", {
     day: "numeric",
     month: "short",
@@ -263,7 +263,7 @@ function TicketCard({
   function confirmDelete() {
     Alert.alert(
       "Remove this ticket?",
-      "This only removes it from your list — it won't affect any refund already in progress.",
+      "This only removes it from your list. It won't affect any refund already in progress.",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -342,7 +342,7 @@ function TicketCard({
           />
           <Stat
             label="Total paid"
-            value={t === "confirmed" ? money(b.amount) : "—"}
+            value={t === "confirmed" ? money(b.amount) : "-"}
             theme={theme}
           />
           <Stat label="Booked on" value={dateOnly(b.createdAt)} theme={theme} />

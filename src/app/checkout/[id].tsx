@@ -345,7 +345,7 @@ export default function CheckoutScreen() {
                     From
                   </Text>
                   <Text style={[styles.routeValue, { color: theme.text }]}>
-                    {booking.from_stop?.location?.name_en ?? "—"}
+                    {booking.from_stop?.location?.name_en ?? "-"}
                   </Text>
                 </View>
                 <View style={styles.routeLine}>
@@ -359,7 +359,7 @@ export default function CheckoutScreen() {
                     To
                   </Text>
                   <Text style={[styles.routeValue, { color: theme.text, textAlign: "right" }]}>
-                    {booking.to_stop?.location?.name_en ?? "—"}
+                    {booking.to_stop?.location?.name_en ?? "-"}
                   </Text>
                 </View>
               </View>
@@ -379,7 +379,7 @@ export default function CheckoutScreen() {
                             month: "short",
                             year: "numeric",
                           })
-                        : "—"}
+                        : "-"}
                     </Text>
                   </View>
                   <View style={styles.detailCell}>
@@ -392,7 +392,7 @@ export default function CheckoutScreen() {
                             hour: "2-digit",
                             minute: "2-digit",
                           })
-                        : "—"}
+                        : "-"}
                     </Text>
                   </View>
                 </View>
