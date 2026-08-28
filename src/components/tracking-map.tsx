@@ -651,6 +651,7 @@ export function TrackingMap({
         showsTraffic={false}
         showsIndoors={false}
         mapType={Platform.OS === "ios" ? "mutedStandard" : "standard"}
+        userInterfaceStyle="light"
         customMapStyle={
           Platform.OS === "android" ? MUTED_ANDROID_MAP_STYLE : undefined
         }
