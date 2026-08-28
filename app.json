@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/images/applogo.png",
     "scheme": "busconnectmobile",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "ios": {
       "icon": "./assets/images/applogo.png",
       "bundleIdentifier": "lk.busconnect.app",

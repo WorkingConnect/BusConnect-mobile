@@ -13,7 +13,7 @@ const ThemeModeContext = createContext<ThemeModeContextValue | undefined>(undefi
 
 export function ThemeModeProvider({ children }: { children: ReactNode }) {
   const systemScheme = useSystemColorScheme();
-  const [mode, setModeState] = useState<ThemeMode>("system");
+  const [mode, setModeState] = useState<ThemeMode>("light");
 
   useEffect(() => {
     void getStoredThemeMode().then(setModeState);

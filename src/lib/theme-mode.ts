@@ -6,7 +6,7 @@ const KEY = "busconnect-theme-mode";
 
 export async function getStoredThemeMode(): Promise<ThemeMode> {
   const value = await SecureStore.getItemAsync(KEY);
-  return value === "light" || value === "dark" ? value : "system";
+  return value === "light" || value === "dark" ? value : "light";
 }
 
 export async function setStoredThemeMode(mode: ThemeMode): Promise<void> {
