@@ -12,9 +12,12 @@ export function stripCountryCode(phone: string | null | undefined): string {
   return digits;
 }
 
-/** Combines the fixed +94 prefix with whatever local digits the user typed. */
+/** Combines the fixed +94 prefix with whatever local digits the user typed.
+ *  Tolerant of a stray leading "0"/"94" so a pasted or reviewer-typed number
+ *  in local dialing form (e.g. "0764829645") still resolves to the correct
+ *  E.164 value instead of silently producing a mismatched phone number. */
 export function toE164(localDigits: string): string {
-  return `${PHONE_COUNTRY_CODE}${localDigits.replace(/\D/g, "")}`;
+  return `${PHONE_COUNTRY_CODE}${stripCountryCode(localDigits)}`;
 }
 
 /** Formats a stored phone number for display, grouped for readability

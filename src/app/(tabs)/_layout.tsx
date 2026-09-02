@@ -1,27 +1,15 @@
-import { ActivityIndicator, View } from "react-native";
-import { Redirect, Tabs } from "expo-router";
+import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/hooks/use-theme";
-import { useAuth } from "@/lib/auth";
 import { TabBarBaseHeight } from "@/constants/theme";
 
+/** No blanket auth gate here — Home and Hire are browsable without an
+ *  account. Tickets and Profile are account-based and handle their own
+ *  signed-out state (redirect / sign-in prompt) individually. */
 export default function TabsLayout() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const { session, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: theme.background }}>
-        <ActivityIndicator color={theme.brand} />
-      </View>
-    );
-  }
-
-  if (!session) {
-    return <Redirect href="/login" />;
-  }
 
   return (
     <Tabs

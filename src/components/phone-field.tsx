@@ -2,7 +2,7 @@ import { StyleSheet, TextInput, View } from "react-native";
 import { Text } from "@/components/ui/text";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/use-theme";
-import { PHONE_COUNTRY_CODE } from "@/lib/phone";
+import { PHONE_COUNTRY_CODE, stripCountryCode } from "@/lib/phone";
 import { BrandFonts, Spacing } from "@/constants/theme";
 
 /** Phone input with a fixed +94 country-code badge — the user only ever
@@ -28,11 +28,11 @@ export function PhoneField({
       </Text>
       <TextInput
         value={value}
-        onChangeText={(t) => onChangeText(t.replace(/\D/g, ""))}
+        onChangeText={(t) => onChangeText(stripCountryCode(t).slice(0, 9))}
         placeholder={placeholder}
         placeholderTextColor={theme.textSecondary}
         keyboardType="phone-pad"
-        maxLength={9}
+        maxLength={15}
         style={[styles.input, { color: theme.text }]}
       />
     </View>
