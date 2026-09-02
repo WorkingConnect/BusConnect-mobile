@@ -25,10 +25,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const pushRegisteredForUser = useRef<string | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setLoading(false);
-    });
+    // No .catch() here used to leave `loading` stuck true forever on any
+    // rejection (e.g. a SecureStore/Keychain read failure) — invisible
+    // before, since no signed-out screen depended on `loading` resolving
+    // until guest browsing was allowed past the tab layout's auth gate.
+    supabase.auth
+      .getSession()
+      .then(({ data }) => setSession(data.session))
+      .catch(() => setSession(null))
+      .finally(() => setLoading(false));
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, newSession) => {

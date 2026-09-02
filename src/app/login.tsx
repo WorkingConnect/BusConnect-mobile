@@ -11,7 +11,7 @@ import {
   View,
 } from "react-native";
 import { Text } from "@/components/ui/text";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, router, type Href } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/use-theme";
@@ -23,6 +23,7 @@ import { Spacing, BrandFonts } from "@/constants/theme";
 
 export default function LoginScreen() {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const { next } = useLocalSearchParams<{ next?: string }>();
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
@@ -54,6 +55,13 @@ export default function LoginScreen() {
         edges={["top"]}
         style={[styles.hero, { backgroundColor: theme.brand }]}
       >
+        <Pressable
+          onPress={() => (router.canGoBack() ? router.back() : router.push("/"))}
+          hitSlop={12}
+          style={[styles.closeButton, { top: insets.top + Spacing.three }]}
+        >
+          <Ionicons name="close" size={24} color="#fff" />
+        </Pressable>
         <Image
           source={require("../../assets/images/applogo.png")}
           style={styles.logo}
@@ -178,6 +186,12 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.five,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
+  },
+  closeButton: {
+    position: "absolute",
+    top: Spacing.three,
+    left: Spacing.four,
+    zIndex: 1,
   },
   formArea: { flex: 1 },
   scrollContent: {

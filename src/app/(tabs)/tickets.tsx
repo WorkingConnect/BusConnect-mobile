@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -63,6 +64,13 @@ export default function TicketsScreen() {
   const [bookings, setBookings] = useState<MyBooking[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("confirmed");
+  // The tab bar keeps this screen mounted in the background when navigating
+  // away (Sign In / Not now), so the modal's `visible` must be driven by
+  // this instead of hardcoded true — otherwise it keeps rendering on top of
+  // whatever screen navigation lands on. Resets on every focus so a guest
+  // who dismissed it still sees it again on returning to this tab.
+  const [signInDismissed, setSignInDismissed] = useState(false);
+  useFocusEffect(useCallback(() => setSignInDismissed(false), []));
 
   const load = useCallback(() => {
     if (!session) return;
@@ -74,14 +82,6 @@ export default function TicketsScreen() {
   // useFocusEffect already runs on initial mount (first focus), so this
   // also covers the load-on-mount case without a second, redundant fetch.
   useFocusEffect(load);
-
-  // No account → go straight to the sign-in screen instead of showing a
-  // placeholder link the user has to tap.
-  useEffect(() => {
-    if (!authLoading && !session) {
-      router.replace({ pathname: "/login", params: { next: "/tickets" } });
-    }
-  }, [authLoading, session]);
 
   const hero = (
     <SafeAreaView
@@ -111,7 +111,40 @@ export default function TicketsScreen() {
       <View style={{ flex: 1, backgroundColor: theme.background }}>
         {hero}
         <View style={styles.center}>
-          <ActivityIndicator color={theme.brand} />
+          <Modal visible={!signInDismissed} transparent animationType="fade">
+            <View style={styles.modalOverlay}>
+              <View style={[styles.signInCard, { backgroundColor: theme.backgroundElement }]}>
+                <Ionicons name="ticket-outline" size={40} color={theme.brand} />
+                <Text style={{ fontFamily: BrandFonts.headingSemiBold, color: theme.text, fontWeight: "800", fontSize: 17, marginTop: Spacing.two, textAlign: "center" }}>
+                  Sign in to view your tickets
+                </Text>
+                <Text style={{ color: theme.textSecondary, fontSize: 13, marginTop: Spacing.one, textAlign: "center" }}>
+                  Track your bookings and boarding passes.
+                </Text>
+                <Pressable
+                  onPress={() => {
+                    setSignInDismissed(true);
+                    router.push({ pathname: "/login", params: { next: "/tickets" } });
+                  }}
+                  style={[styles.signInButton, { backgroundColor: theme.brand }]}
+                >
+                  <Text style={{ fontFamily: BrandFonts.uiSemiBold, color: "#fff", fontWeight: "700", fontSize: 15 }}>
+                    Sign In
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    setSignInDismissed(true);
+                    router.push("/");
+                  }}
+                  hitSlop={8}
+                  style={{ marginTop: Spacing.three }}
+                >
+                  <Text style={{ color: theme.textSecondary, fontSize: 13, fontWeight: "600" }}>Not now</Text>
+                </Pressable>
+              </View>
+            </View>
+          </Modal>
         </View>
       </View>
     );
@@ -666,6 +699,21 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
   },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center", padding: Spacing.four },
+  signInCard: {
+    width: "100%",
+    maxWidth: 340,
+    borderRadius: 20,
+    padding: Spacing.five,
+    alignItems: "center",
+  },
+  signInButton: {
+    marginTop: Spacing.four,
+    alignSelf: "stretch",
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
   tabRow: { flexDirection: "row", gap: Spacing.two },
   tabButton: {
     borderWidth: 1,

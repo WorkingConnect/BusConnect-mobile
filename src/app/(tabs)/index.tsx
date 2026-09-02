@@ -172,7 +172,7 @@ export default function SearchScreen() {
                 Search live seats, book securely, board with a QR ticket.
               </Text>
             </View>
-            <NotificationBell />
+            {session && <NotificationBell />}
           </View>
         </SafeAreaView>
 

@@ -57,6 +57,7 @@ export default function TripDetailScreen() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [genders, setGenders] = useState<Map<string, "male" | "female">>(new Map());
   const [genderPromptSeat, setGenderPromptSeat] = useState<string | null>(null);
+  const [signInPromptOpen, setSignInPromptOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [stopPickerMode, setStopPickerMode] = useState<"from" | "to" | null>(null);
 
@@ -162,7 +163,7 @@ export default function TripDetailScreen() {
   async function handleContinue() {
     if (selected.size === 0 || !id || !from || !to) return;
     if (!session) {
-      router.push({ pathname: "/login", params: { next: `/trips/${id}?from=${from}&to=${to}` } });
+      setSignInPromptOpen(true);
       return;
     }
     setError(null);
@@ -464,6 +465,34 @@ export default function TripDetailScreen() {
         )}
       </ScrollView>
 
+      <Modal visible={signInPromptOpen} transparent animationType="fade" onRequestClose={() => setSignInPromptOpen(false)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setSignInPromptOpen(false)}>
+          <Pressable style={[styles.signInSheet, { backgroundColor: theme.backgroundElement }]} onPress={(e) => e.stopPropagation()}>
+            <Ionicons name="lock-closed-outline" size={40} color={theme.brand} />
+            <Text style={{ fontFamily: BrandFonts.headingSemiBold, color: theme.text, fontWeight: "800", fontSize: 17, marginTop: Spacing.two, textAlign: "center" }}>
+              Sign in to book this seat
+            </Text>
+            <Text style={{ color: theme.textSecondary, fontSize: 13, marginTop: Spacing.one, textAlign: "center" }}>
+              Your seat selection is saved — just sign in or create an account to continue.
+            </Text>
+            <Pressable
+              onPress={() => {
+                setSignInPromptOpen(false);
+                router.push({ pathname: "/login", params: { next: `/trips/${id}?from=${from}&to=${to}` } });
+              }}
+              style={[styles.signInButton, { backgroundColor: theme.brand }]}
+            >
+              <Text style={{ fontFamily: BrandFonts.uiSemiBold, color: "#fff", fontWeight: "700", fontSize: 15 }}>
+                Sign In
+              </Text>
+            </Pressable>
+            <Pressable onPress={() => setSignInPromptOpen(false)} hitSlop={8} style={{ marginTop: Spacing.three }}>
+              <Text style={{ color: theme.textSecondary, fontSize: 13, fontWeight: "600" }}>Not now</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       <Modal visible={!!genderPromptSeat} transparent animationType="fade" onRequestClose={() => setGenderPromptSeat(null)}>
         <Pressable style={styles.modalOverlay} onPress={() => setGenderPromptSeat(null)}>
           <View style={[styles.genderSheet, { backgroundColor: theme.backgroundElement }]}>
@@ -713,6 +742,14 @@ const styles = StyleSheet.create({
   continueText: { fontFamily: BrandFonts.uiSemiBold, color: "#fff", fontWeight: "700", fontSize: 16 },
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center" },
   genderSheet: { borderRadius: 16, padding: Spacing.four, width: 260 },
+  signInSheet: { borderRadius: 20, padding: Spacing.five, width: 300, alignItems: "center" },
+  signInButton: {
+    marginTop: Spacing.four,
+    alignSelf: "stretch",
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
   stopField: { flex: 1, padding: Spacing.three },
   stopPickerSheet: {
     width: "100%",

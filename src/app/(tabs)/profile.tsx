@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
   KeyboardAvoidingView,
   Linking,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -14,7 +15,7 @@ import {
 } from "react-native";
 import { Text } from "@/components/ui/text";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import type { Session } from "@supabase/supabase-js";
 import { useTheme } from "@/hooks/use-theme";
@@ -49,6 +50,13 @@ export default function ProfileScreen() {
   const [loadErrorOffline, setLoadErrorOffline] = useState(false);
   const [retryTick, setRetryTick] = useState(0);
   const isConnected = useNetworkStatus();
+  // The tab bar keeps this screen mounted in the background when navigating
+  // away (Sign In / Not now), so the modal's `visible` must be driven by
+  // this instead of hardcoded true — otherwise it keeps rendering on top of
+  // whatever screen navigation lands on. Resets on every focus so a guest
+  // who dismissed it still sees it again on returning to this tab.
+  const [signInDismissed, setSignInDismissed] = useState(false);
+  useFocusEffect(useCallback(() => setSignInDismissed(false), []));
 
   async function handleSignOut() {
     // signOut() itself holds a brief global overlay (see root _layout.tsx)
@@ -91,18 +99,46 @@ export default function ProfileScreen() {
     );
   }
 
+  // Profile is entirely account data — a guest landing here sees the tab's
+  // empty background with a popup prompting sign-in, rather than a bare
+  // placeholder link or an immediate forced redirect.
   if (!session) {
     return (
       <View style={[styles.center, { backgroundColor: theme.background }]}>
-        <Pressable
-          onPress={() =>
-            router.push({ pathname: "/login", params: { next: "/profile" } })
-          }
-        >
-          <Text style={{ color: theme.brand, fontWeight: "600", fontSize: 16 }}>
-            Sign in to view your profile
-          </Text>
-        </Pressable>
+        <Modal visible={!signInDismissed} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={[styles.signInCard, { backgroundColor: theme.backgroundElement }]}>
+              <Ionicons name="person-circle-outline" size={40} color={theme.brand} />
+              <Text style={{ fontFamily: BrandFonts.headingSemiBold, color: theme.text, fontWeight: "800", fontSize: 17, marginTop: Spacing.two, textAlign: "center" }}>
+                Sign in to view your profile
+              </Text>
+              <Text style={{ color: theme.textSecondary, fontSize: 13, marginTop: Spacing.one, textAlign: "center" }}>
+                Manage your account, saved details, and preferences.
+              </Text>
+              <Pressable
+                onPress={() => {
+                  setSignInDismissed(true);
+                  router.push({ pathname: "/login", params: { next: "/profile" } });
+                }}
+                style={[styles.signInButton, { backgroundColor: theme.brand }]}
+              >
+                <Text style={{ fontFamily: BrandFonts.uiSemiBold, color: "#fff", fontWeight: "700", fontSize: 15 }}>
+                  Sign In
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  setSignInDismissed(true);
+                  router.push("/");
+                }}
+                hitSlop={8}
+                style={{ marginTop: Spacing.three }}
+              >
+                <Text style={{ color: theme.textSecondary, fontSize: 13, fontWeight: "600" }}>Not now</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
       </View>
     );
   }
@@ -718,6 +754,21 @@ function Field({
 const styles = StyleSheet.create({
   scrollContent: { flexGrow: 1, paddingBottom: Spacing.six + BottomTabInset },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center", padding: Spacing.four },
+  signInCard: {
+    width: "100%",
+    maxWidth: 340,
+    borderRadius: 20,
+    padding: Spacing.five,
+    alignItems: "center",
+  },
+  signInButton: {
+    marginTop: Spacing.four,
+    alignSelf: "stretch",
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
   hero: {
     alignItems: "center",
     paddingTop: Spacing.four,
