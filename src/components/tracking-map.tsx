@@ -58,6 +58,13 @@ const MAX_PREDICT_S = 10; // stop dead-reckoning forward if a fix is this overdu
 const POSITION_EASE = 0.15; // per-frame lerp of the drawn position toward the predicted one — smooths fix corrections
 const CAM_FOLLOW_MS = 900; // how often (and how long) the camera re-centres on the moving bus while following
 const MAX_SPEED_MPS = 30; // ~108 km/h — clamp bad speed reads so a glitch can't fling the marker down the route
+// Beyond this perpendicular distance from the mapped route, snapping the
+// bus onto "the nearest point on the line" stops being an honest read of
+// where it actually is — a real detour, a GPS glitch, or (in practice, the
+// more common case) route geometry that doesn't quite match the real road
+// would otherwise confidently show the bus on a road it was never on. Past
+// this threshold the raw fix is shown directly instead.
+const MAX_SNAP_DISTANCE_M = 600;
 
 type LatLng = { latitude: number; longitude: number };
 
@@ -86,10 +93,13 @@ function cumulativeDistances(coords: LatLng[]): number[] {
 }
 
 /** Projects a GPS point onto the route polyline, returning how far along the
- *  route (metres) the nearest point sits. Uses a flat-earth metre projection
- *  local to the point — fine at Sri Lanka scale for finding the closest
- *  segment. Called once per fix, so a full scan is cheap. */
-function projectDistanceAlong(point: LatLng, coords: LatLng[], cum: number[]): number {
+ *  route (metres) the nearest point sits, and how far off the line the raw
+ *  point itself is (perpendicular distance, metres) — the latter is what
+ *  decides whether snapping onto the line is still an honest thing to do.
+ *  Uses a flat-earth metre projection local to the point — fine at Sri Lanka
+ *  scale for finding the closest segment. Called once per fix, so a full
+ *  scan is cheap. */
+function projectDistanceAlong(point: LatLng, coords: LatLng[], cum: number[]): { along: number; perpM: number } {
   const mPerDegLat = 111320;
   const cosLat = Math.cos(toRad(point.latitude));
   const px = point.longitude * mPerDegLat * cosLat;
@@ -116,7 +126,7 @@ function projectDistanceAlong(point: LatLng, coords: LatLng[], cum: number[]): n
       bestAlong = cum[i] + t * (cum[i + 1] - cum[i]);
     }
   }
-  return bestAlong;
+  return { along: bestAlong, perpM: bestPerp };
 }
 
 /** The coordinate (and road bearing) at a given distance along the route.
@@ -373,6 +383,11 @@ export function TrackingMap({
   const cursorRef = useRef(0); // forward-only segment cursor for pointAtDistance
   const unwrappedHeadingRef = useRef(0);
   const lastCamRef = useRef(0);
+  // True while the latest fix is too far from the mapped route to trust a
+  // snap — the RAF loop below leaves the marker alone (already placed
+  // directly at the raw fix) rather than fighting it with route-prediction
+  // math that assumes a point that's actually on the line.
+  const offRouteRef = useRef(false);
 
   useEffect(() => {
     coordsRef.current = routeCoords;
@@ -427,6 +442,7 @@ export function TrackingMap({
       placed.current = false;
       fixAlongRef.current = null;
       prevPos.current = null;
+      offRouteRef.current = false;
       return;
     }
 
@@ -461,7 +477,37 @@ export function TrackingMap({
     const cum = cumRef.current;
     if (coords.length < 2) return;
 
-    const along = projectDistanceAlong({ latitude: position.lat, longitude: position.lng }, coords, cum);
+    const next: LatLng = { latitude: position.lat, longitude: position.lng };
+    const { along, perpM } = projectDistanceAlong(next, coords, cum);
+
+    if (perpM > MAX_SNAP_DISTANCE_M) {
+      // Too far from the mapped route to trust a snap — show the raw fix
+      // directly instead of confidently placing the bus on the wrong road.
+      // Same glide-to-fix treatment as the no-route-geometry fallback above.
+      offRouteRef.current = true;
+      if (!placed.current) {
+        placed.current = true;
+        busCoord.setValue({ ...next, latitudeDelta: 0, longitudeDelta: 0 });
+      } else {
+        busCoord
+          .timing({ toValue: 0, ...next, latitudeDelta: 0, longitudeDelta: 0, duration: 1000, useNativeDriver: false })
+          .start();
+        const prev = prevPos.current;
+        if (prev) {
+          const moved = (prev.latitude - next.latitude) ** 2 + (prev.longitude - next.longitude) ** 2;
+          if (moved > 1e-10) {
+            const bearing = bearingBetween(prev, next);
+            unwrappedHeadingRef.current = unwrapHeading(unwrappedHeadingRef.current, bearing);
+            Animated.timing(heading, { toValue: unwrappedHeadingRef.current, duration: 900, useNativeDriver: true }).start();
+          }
+        }
+      }
+      prevPos.current = next;
+      if (!userMovedRef.current) mapRef.current?.animateCamera({ center: next }, { duration: 800 });
+      return;
+    }
+    offRouteRef.current = false;
+
     const fixTime = position.recordedAt ? new Date(position.recordedAt).getTime() : Date.now();
 
     // Prefer the device's reported speed; when it's missing or zero, derive it
@@ -493,6 +539,7 @@ export function TrackingMap({
         mapRef.current?.animateCamera({ center: { latitude: p.latitude, longitude: p.longitude } }, { duration: 600 });
       }
     }
+    prevPos.current = next;
   }, [position, hasPath, busCoord, heading]);
 
   // ── The engine: a requestAnimationFrame loop that advances the drawn
@@ -504,7 +551,7 @@ export function TrackingMap({
     const loop = () => {
       const coords = coordsRef.current;
       const cum = cumRef.current;
-      if (fixAlongRef.current != null && cum.length > 1) {
+      if (!offRouteRef.current && fixAlongRef.current != null && cum.length > 1) {
         const now = Date.now();
         const elapsed = Math.max(0, (now - fixTimeRef.current) / 1000);
         const routeLen = cum[cum.length - 1];

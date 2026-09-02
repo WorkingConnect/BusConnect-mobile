@@ -178,13 +178,16 @@ export default function TrackScreen() {
     };
   }, [id, refresh]);
 
-  const position = useMemo<BusPosition | null>(
-    () =>
-      live?.tracking
-        ? { lat: live.lat, lng: live.lng, speedKmh: live.speed_kmh, recordedAt: live.recorded_at }
-        : null,
-    [live],
-  );
+  const position = useMemo<BusPosition | null>(() => {
+    if (!live?.tracking) return null;
+    // Same cutoff deriveSheet uses to decide "Waiting for signal" — without
+    // it, the map kept showing the bus frozen at its last known fix
+    // indefinitely (no matter how old), with nothing on the map itself
+    // indicating it had stopped being current, while the sheet's own text
+    // already correctly called it stale.
+    if (now - new Date(live.recorded_at).getTime() > STALE_MS) return null;
+    return { lat: live.lat, lng: live.lng, speedKmh: live.speed_kmh, recordedAt: live.recorded_at };
+  }, [live, now]);
 
   const boardingName = useMemo(
     () => route?.stops.find((s) => s.route_stop_id === stopId)?.name ?? null,
@@ -356,67 +359,14 @@ export default function TrackScreen() {
 
           {!collapsed && (
             <>
-              {sheet.etaMinutes != null ? (
-                <>
-                  {boardingName ? (
-                    <Text
-                      style={[styles.etaTo, { color: theme.textSecondary }]}
-                    >
-                      To {boardingName}
-                    </Text>
-                  ) : null}
-                  <View style={styles.statsRow}>
-                    <View style={styles.statBlock}>
-                      <Text
-                        style={[
-                          styles.statLabel,
-                          { color: theme.textSecondary },
-                        ]}
-                      >
-                        Travel time
-                      </Text>
-                      <View style={styles.statValueRow}>
-                        <Text style={[styles.statValue, { color: theme.text }]}>
-                          {sheet.etaMinutes}
-                        </Text>
-                        <Text style={[styles.statUnit, { color: theme.text }]}>
-                          {" "}
-                          min
-                        </Text>
-                      </View>
-                    </View>
-                    {sheet.distanceKm != null && (
-                      <View style={styles.statBlock}>
-                        <Text
-                          style={[
-                            styles.statLabel,
-                            { color: theme.textSecondary },
-                          ]}
-                        >
-                          Distance
-                        </Text>
-                        <View style={styles.statValueRow}>
-                          <Text
-                            style={[styles.statValue, { color: theme.text }]}
-                          >
-                            {sheet.distanceKm}
-                          </Text>
-                          <Text
-                            style={[styles.statUnit, { color: theme.text }]}
-                          >
-                            {" "}
-                            km
-                          </Text>
-                        </View>
-                      </View>
-                    )}
-                  </View>
-                </>
-              ) : (
-                <Text style={[styles.heroTitle, { color: theme.text }]}>
-                  {sheet.title}
+              <Text style={[styles.heroTitle, { color: theme.text }]}>
+                {sheet.title}
+              </Text>
+              {boardingName && sheet.etaMinutes != null ? (
+                <Text style={[styles.etaTo, { color: theme.textSecondary }]}>
+                  To {boardingName}
                 </Text>
-              )}
+              ) : null}
 
               {sheet.sub ? (
                 <Text style={[styles.sub, { color: theme.textSecondary }]}>
@@ -514,7 +464,6 @@ interface SheetState {
   sub: string | null;
   etaMinutes: number | null;
   speedKmh: number | null;
-  distanceKm: number | null;
 }
 
 function deriveSheet(
@@ -529,7 +478,6 @@ function deriveSheet(
       sub: null,
       etaMinutes: null,
       speedKmh: null,
-      distanceKm: null,
     };
 
   const status = live.status ?? "scheduled";
@@ -542,7 +490,6 @@ function deriveSheet(
       sub: "This bus has finished its trip.",
       etaMinutes: null,
       speedKmh: null,
-      distanceKm: null,
     };
   if (status === "cancelled")
     return {
@@ -551,7 +498,6 @@ function deriveSheet(
       sub: null,
       etaMinutes: null,
       speedKmh: null,
-      distanceKm: null,
     };
   if (status === "scheduled")
     return {
@@ -560,7 +506,6 @@ function deriveSheet(
       sub: "Live tracking begins when the bus starts boarding.",
       etaMinutes: null,
       speedKmh: null,
-      distanceKm: null,
     };
 
   // boarding / departed
@@ -572,7 +517,6 @@ function deriveSheet(
       sub: "Waiting for the bus's live location…",
       etaMinutes: null,
       speedKmh: null,
-      distanceKm: null,
     };
 
   const ageMs = now - new Date(live.recorded_at).getTime();
@@ -584,15 +528,10 @@ function deriveSheet(
       sub: null,
       etaMinutes: null,
       speedKmh: null,
-      distanceKm: null,
     };
   }
 
   const speedKmh = live.speed_kmh != null ? Math.round(live.speed_kmh) : null;
-  const distanceKm =
-    live.distance_m != null
-      ? Math.round((live.distance_m / 1000) * 10) / 10
-      : null;
   return {
     connected: true,
     title: status === "boarding" ? "Boarding at the stop" : "On the way",
@@ -602,9 +541,15 @@ function deriveSheet(
         : boardingName
           ? null
           : "Heading to your stop.",
-    etaMinutes: live.eta_minutes ?? null,
+    // get_trip_live() computes ETA/distance to the passenger's boarding
+    // stop, but doesn't tell the client whether that stop is still ahead of
+    // the bus or already behind it — once the trip has departed, a boarding
+    // stop at (or before) the route's origin is guaranteed to be behind,
+    // and showing "arriving in N min" for a stop already passed is just
+    // wrong. Only trust it during the pre-departure boarding phase, when
+    // the stop is reliably still ahead for every passenger.
+    etaMinutes: status === "boarding" ? (live.eta_minutes ?? null) : null,
     speedKmh,
-    distanceKm,
   };
 }
 
@@ -700,33 +645,12 @@ const styles = StyleSheet.create({
   },
   dot: { width: 12, height: 12, borderRadius: 6 },
   etaTo: { fontSize: 15, fontWeight: "500", marginTop: Spacing.two },
-  statsRow: { flexDirection: "row", gap: Spacing.five, marginTop: Spacing.two },
-  statBlock: {},
-  statLabel: {
-    fontFamily: BrandFonts.uiSemiBold,
-    fontSize: 12,
-    fontWeight: "600",
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-  },
-  statValueRow: { flexDirection: "row", alignItems: "baseline", marginTop: 2 },
-  statValue: {
-    fontFamily: BrandFonts.headingSemiBold,
-    fontSize: 30,
-    fontWeight: "800",
-    letterSpacing: -0.8,
-  },
-  statUnit: {
-    fontFamily: BrandFonts.headingSemiBold,
-    fontSize: 15,
-    fontWeight: "700",
-  },
   heroTitle: {
     fontFamily: BrandFonts.headingSemiBold,
-    fontSize: 22,
-    fontWeight: "800",
+    fontSize: 16,
+    fontWeight: "700",
     marginTop: Spacing.two,
-    letterSpacing: -0.3,
+    letterSpacing: -0.2,
   },
   sub: { fontSize: 13, marginTop: 4, lineHeight: 18 },
   metaRow: {
