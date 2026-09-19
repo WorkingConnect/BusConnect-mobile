@@ -27,12 +27,15 @@ import {
   type PopularRoute,
 } from "@/lib/popular-routes";
 import { listActiveOperators, type OperatorSummary } from "@/lib/operators";
+import { listOffers, type Offer } from "@/lib/offers";
+import { OfferCard } from "@/components/offer-card";
 import { getWallet, type Wallet } from "@/lib/api";
 import { NotificationBell } from "@/components/notification-bell";
 import { Spacing, BottomTabInset, TabBarBaseHeight, BrandFonts } from "@/constants/theme";
 
 const ROUTE_CARD_WIDTH = 220;
 const OPERATOR_CARD_WIDTH = 128;
+const OFFER_CARD_WIDTH = 200;
 // Must match the tab bar's own borderTopLeftRadius/borderTopRightRadius in
 // (tabs)/_layout.tsx — see the comment where this is used below.
 const TAB_BAR_CORNER_RADIUS = 24;
@@ -96,6 +99,7 @@ export default function SearchScreen() {
     null,
   );
   const [operators, setOperators] = useState<OperatorSummary[] | null>(null);
+  const [offers, setOffers] = useState<Offer[] | null>(null);
   const [wallet, setWallet] = useState<Wallet | null>(null);
 
   const firstName = (
@@ -111,6 +115,7 @@ export default function SearchScreen() {
     });
     void listPopularRoutes(6).then(setPopularRoutes);
     void listActiveOperators().then(setOperators);
+    void listOffers().then(setOffers);
   }, []);
 
   function openOperator(op: OperatorSummary) {
@@ -337,6 +342,25 @@ export default function SearchScreen() {
             />
           </Pressable>
         )}
+
+        {offers === null ? null : offers.length > 0 ? (
+          <View style={styles.popularSection}>
+            <Text style={[styles.popularTitle, { color: theme.text }]}>
+              Offers for you
+            </Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              snapToInterval={OFFER_CARD_WIDTH + Spacing.three}
+              decelerationRate="fast"
+              contentContainerStyle={styles.popularScrollContent}
+            >
+              {offers.slice(0, 8).map((o) => (
+                <OfferCard key={o.id} offer={o} width={OFFER_CARD_WIDTH} />
+              ))}
+            </ScrollView>
+          </View>
+        ) : null}
 
         {popularRoutes === null ? null : popularRoutes.length > 0 ? (
           <View style={styles.popularSection}>

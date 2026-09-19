@@ -140,6 +140,11 @@ export default function CheckoutScreen() {
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const amount = booking?.amount ?? null;
   const expiresAt = booking?.holds?.[0]?.expires_at ?? null;
+  // Shared across every stage below — a payer can sit on the wallet-confirm
+  // screen long enough for the hold to lapse after already passing the
+  // "choose" stage's own expiry guard, so every pay action re-checks this
+  // rather than just the first one.
+  const expired = secondsLeft === 0;
   // The operator's own rate — every operator has one (default 2%), server-
   // computed the same way on both charging paths (mpgs.service.ts,
   // pay_booking_from_wallet()). Falls back to 2 only if it's ever missing.
@@ -309,7 +314,6 @@ export default function CheckoutScreen() {
   if (stage === "choose") {
     const insufficientWallet =
       wallet !== null && amount !== null && wallet.balance < amount;
-    const expired = secondsLeft === 0;
     return (
       <View style={{ flex: 1, backgroundColor: theme.background }}>
         {hero}
@@ -618,6 +622,13 @@ export default function CheckoutScreen() {
             </View>
           </View>
 
+          {expired && (
+            <Text style={[styles.expiredHint, { color: theme.textSecondary }]}>
+              Your seat hold expired while you were reviewing this. Go back and
+              select seats again.
+            </Text>
+          )}
+
           {error && (
             <Text style={{ color: "#dc2626", fontSize: 13, marginTop: Spacing.three }}>
               {error}
@@ -626,14 +637,18 @@ export default function CheckoutScreen() {
 
           <Pressable
             onPress={confirmWalletPayment}
-            disabled={insufficientWallet}
+            disabled={insufficientWallet || expired}
             style={[
               styles.payButton,
-              { backgroundColor: theme.brand, opacity: insufficientWallet ? 0.5 : 1 },
+              { backgroundColor: theme.brand, opacity: insufficientWallet || expired ? 0.5 : 1 },
             ]}
           >
             <Text style={styles.payButtonLabel}>
-              {insufficientWallet ? "Insufficient balance" : `Pay ${formatLkr(totalWithFee)}`}
+              {expired
+                ? "Seat hold expired"
+                : insufficientWallet
+                  ? "Insufficient balance"
+                  : `Pay ${formatLkr(totalWithFee)}`}
             </Text>
           </Pressable>
 
