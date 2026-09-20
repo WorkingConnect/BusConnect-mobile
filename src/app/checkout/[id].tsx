@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Image,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -437,285 +439,287 @@ export default function CheckoutScreen() {
     return (
       <View style={{ flex: 1, backgroundColor: theme.background }}>
         {hero}
-        <ScrollView contentContainerStyle={styles.chooseContainer}>
-          {booking && (
-            <View
-              style={[
-                styles.summaryCard,
-                { backgroundColor: theme.backgroundElement, borderColor: theme.border },
-              ]}
-            >
-              {booking.trip?.bus?.operator?.name && (
-                <View style={styles.operatorRow}>
-                  {booking.trip.bus.operator.logo_url ? (
-                    <Image
-                      source={{ uri: booking.trip.bus.operator.logo_url }}
-                      style={styles.operatorLogo}
-                    />
-                  ) : (
-                    <View style={[styles.operatorLogo, styles.operatorLogoFallback, { backgroundColor: theme.brand }]}>
-                      <Ionicons name="bus" size={16} color="#fff" />
-                    </View>
-                  )}
-                  <Text style={[styles.operatorName, { color: theme.text }]}>
-                    {booking.trip.bus.operator.name}
-                  </Text>
-                </View>
-              )}
-
-              <View style={styles.routeRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.routeLabel, { color: theme.textSecondary }]}>
-                    From
-                  </Text>
-                  <Text style={[styles.routeValue, { color: theme.text }]}>
-                    {booking.from_stop?.location?.name_en ?? "-"}
-                  </Text>
-                </View>
-                <View style={styles.routeLine}>
-                  <View style={[styles.routeDash, { borderColor: theme.border }]} />
-                  <Ionicons name="arrow-forward" size={14} color={theme.brand} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text
-                    style={[styles.routeLabel, { color: theme.textSecondary, textAlign: "right" }]}
-                  >
-                    To
-                  </Text>
-                  <Text style={[styles.routeValue, { color: theme.text, textAlign: "right" }]}>
-                    {booking.to_stop?.location?.name_en ?? "-"}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={[styles.dashedDivider, { borderColor: theme.border }]} />
-
-              <View style={styles.detailsGrid}>
-                <View style={styles.detailsRow}>
-                  <View style={styles.detailCell}>
-                    <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
-                      Date
-                    </Text>
-                    <Text style={[styles.detailValue, { color: theme.text }]}>
-                      {booking.trip?.depart_at
-                        ? new Date(booking.trip.depart_at).toLocaleDateString("en-LK", {
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric",
-                          })
-                        : "-"}
-                    </Text>
-                  </View>
-                  <View style={styles.detailCell}>
-                    <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
-                      Time
-                    </Text>
-                    <Text style={[styles.detailValue, { color: theme.text }]}>
-                      {booking.trip?.depart_at
-                        ? new Date(booking.trip.depart_at).toLocaleTimeString("en-LK", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })
-                        : "-"}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.detailsRow}>
-                  <View style={styles.detailCell}>
-                    <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
-                      Passenger
-                    </Text>
-                    <Text style={[styles.detailValue, { color: theme.text }]}>
-                      {booking.seats.length}
-                    </Text>
-                  </View>
-                  <View style={styles.detailCell}>
-                    <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
-                      Seat no.
-                    </Text>
-                    <Text style={[styles.detailValue, { color: theme.text }]}>
-                      {booking.seats.join(", ")}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-
-              <View style={[styles.dashedDivider, { borderColor: theme.border }]} />
-
-              <View style={styles.summaryRow}>
-                <Text style={{ color: theme.textSecondary, fontSize: 14 }}>Subtotal</Text>
-                <Text style={{ color: theme.text, fontSize: 14 }}>
-                  {formatLkr(booking.amount)}
-                </Text>
-              </View>
-              {discountAmount > 0 && (
-                <View style={styles.summaryRow}>
-                  <Text style={{ color: theme.textSecondary, fontSize: 14 }}>
-                    Discount{booking.offer?.code ? ` (${booking.offer.code})` : ""}
-                  </Text>
-                  <Text style={{ color: "#059669", fontSize: 14 }}>-{formatLkr(discountAmount)}</Text>
-                </View>
-              )}
-              <View style={styles.summaryRow}>
-                <Text style={{ color: theme.textSecondary, fontSize: 14 }}>
-                  Convenience fee ({convenienceFeePct}%)
-                </Text>
-                <Text style={{ color: theme.text, fontSize: 14 }}>
-                  {formatLkr((subtotalAfterDiscount ?? 0) * (convenienceFeePct / 100))}
-                </Text>
-              </View>
-
-              <View style={[styles.dashedDivider, { borderColor: theme.border }]} />
-
-              <View style={styles.summaryRow}>
-                <Text
-                  style={{
-                    fontFamily: BrandFonts.headingSemiBold,
-                    color: theme.text,
-                    fontWeight: "800",
-                    fontSize: 16,
-                  }}
-                >
-                  Amount due
-                </Text>
-                <Text
-                  style={{
-                    fontFamily: BrandFonts.headingSemiBold,
-                    color: theme.brand,
-                    fontWeight: "800",
-                    fontSize: 16,
-                  }}
-                >
-                  {formatLkr(totalWithFee ?? 0)}
-                </Text>
-              </View>
-            </View>
-          )}
-
-          {secondsLeft !== null && (
-            <View style={styles.holdTimerRow}>
-              <Ionicons
-                name="time-outline"
-                size={14}
-                color={expired ? "#dc2626" : theme.textSecondary}
-              />
-              <Text
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+          <ScrollView contentContainerStyle={styles.chooseContainer} keyboardShouldPersistTaps="handled">
+            {booking && (
+              <View
                 style={[
-                  styles.holdTimerText,
-                  { color: expired ? "#dc2626" : theme.textSecondary },
+                  styles.summaryCard,
+                  { backgroundColor: theme.backgroundElement, borderColor: theme.border },
                 ]}
               >
-                {expired
-                  ? "Seat hold expired"
-                  : `Seats held for ${formatCountdown(secondsLeft)}`}
+                {booking.trip?.bus?.operator?.name && (
+                  <View style={styles.operatorRow}>
+                    {booking.trip.bus.operator.logo_url ? (
+                      <Image
+                        source={{ uri: booking.trip.bus.operator.logo_url }}
+                        style={styles.operatorLogo}
+                      />
+                    ) : (
+                      <View style={[styles.operatorLogo, styles.operatorLogoFallback, { backgroundColor: theme.brand }]}>
+                        <Ionicons name="bus" size={16} color="#fff" />
+                      </View>
+                    )}
+                    <Text style={[styles.operatorName, { color: theme.text }]}>
+                      {booking.trip.bus.operator.name}
+                    </Text>
+                  </View>
+                )}
+
+                <View style={styles.routeRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.routeLabel, { color: theme.textSecondary }]}>
+                      From
+                    </Text>
+                    <Text style={[styles.routeValue, { color: theme.text }]}>
+                      {booking.from_stop?.location?.name_en ?? "-"}
+                    </Text>
+                  </View>
+                  <View style={styles.routeLine}>
+                    <View style={[styles.routeDash, { borderColor: theme.border }]} />
+                    <Ionicons name="arrow-forward" size={14} color={theme.brand} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={[styles.routeLabel, { color: theme.textSecondary, textAlign: "right" }]}
+                    >
+                      To
+                    </Text>
+                    <Text style={[styles.routeValue, { color: theme.text, textAlign: "right" }]}>
+                      {booking.to_stop?.location?.name_en ?? "-"}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={[styles.dashedDivider, { borderColor: theme.border }]} />
+
+                <View style={styles.detailsGrid}>
+                  <View style={styles.detailsRow}>
+                    <View style={styles.detailCell}>
+                      <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
+                        Date
+                      </Text>
+                      <Text style={[styles.detailValue, { color: theme.text }]}>
+                        {booking.trip?.depart_at
+                          ? new Date(booking.trip.depart_at).toLocaleDateString("en-LK", {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            })
+                          : "-"}
+                      </Text>
+                    </View>
+                    <View style={styles.detailCell}>
+                      <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
+                        Time
+                      </Text>
+                      <Text style={[styles.detailValue, { color: theme.text }]}>
+                        {booking.trip?.depart_at
+                          ? new Date(booking.trip.depart_at).toLocaleTimeString("en-LK", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : "-"}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.detailsRow}>
+                    <View style={styles.detailCell}>
+                      <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
+                        Passenger
+                      </Text>
+                      <Text style={[styles.detailValue, { color: theme.text }]}>
+                        {booking.seats.length}
+                      </Text>
+                    </View>
+                    <View style={styles.detailCell}>
+                      <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
+                        Seat no.
+                      </Text>
+                      <Text style={[styles.detailValue, { color: theme.text }]}>
+                        {booking.seats.join(", ")}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                <View style={[styles.dashedDivider, { borderColor: theme.border }]} />
+
+                <View style={styles.summaryRow}>
+                  <Text style={{ color: theme.textSecondary, fontSize: 14 }}>Subtotal</Text>
+                  <Text style={{ color: theme.text, fontSize: 14 }}>
+                    {formatLkr(booking.amount)}
+                  </Text>
+                </View>
+                {discountAmount > 0 && (
+                  <View style={styles.summaryRow}>
+                    <Text style={{ color: theme.textSecondary, fontSize: 14 }}>
+                      Discount{booking.offer?.code ? ` (${booking.offer.code})` : ""}
+                    </Text>
+                    <Text style={{ color: "#059669", fontSize: 14 }}>-{formatLkr(discountAmount)}</Text>
+                  </View>
+                )}
+                <View style={styles.summaryRow}>
+                  <Text style={{ color: theme.textSecondary, fontSize: 14 }}>
+                    Convenience fee ({convenienceFeePct}%)
+                  </Text>
+                  <Text style={{ color: theme.text, fontSize: 14 }}>
+                    {formatLkr((subtotalAfterDiscount ?? 0) * (convenienceFeePct / 100))}
+                  </Text>
+                </View>
+
+                <View style={[styles.dashedDivider, { borderColor: theme.border }]} />
+
+                <View style={styles.summaryRow}>
+                  <Text
+                    style={{
+                      fontFamily: BrandFonts.headingSemiBold,
+                      color: theme.text,
+                      fontWeight: "800",
+                      fontSize: 16,
+                    }}
+                  >
+                    Amount due
+                  </Text>
+                  <Text
+                    style={{
+                      fontFamily: BrandFonts.headingSemiBold,
+                      color: theme.brand,
+                      fontWeight: "800",
+                      fontSize: 16,
+                    }}
+                  >
+                    {formatLkr(totalWithFee ?? 0)}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {secondsLeft !== null && (
+              <View style={styles.holdTimerRow}>
+                <Ionicons
+                  name="time-outline"
+                  size={14}
+                  color={expired ? "#dc2626" : theme.textSecondary}
+                />
+                <Text
+                  style={[
+                    styles.holdTimerText,
+                    { color: expired ? "#dc2626" : theme.textSecondary },
+                  ]}
+                >
+                  {expired
+                    ? "Seat hold expired"
+                    : `Seats held for ${formatCountdown(secondsLeft)}`}
+                </Text>
+              </View>
+            )}
+
+            {expired && (
+              <Text style={[styles.expiredHint, { color: theme.textSecondary }]}>
+                These seats may have been given to someone else. Go back and
+                select seats again.
               </Text>
-            </View>
-          )}
+            )}
 
-          {expired && (
-            <Text style={[styles.expiredHint, { color: theme.textSecondary }]}>
-              These seats may have been given to someone else. Go back and
-              select seats again.
-            </Text>
-          )}
+            {booking && (
+              <View style={{ marginBottom: Spacing.four }}>
+                <PromoCodeField bookingId={booking.id} appliedOffer={booking.offer} onChanged={refreshBooking} />
+              </View>
+            )}
 
-          {booking && (
-            <View style={{ marginBottom: Spacing.four }}>
-              <PromoCodeField bookingId={booking.id} appliedOffer={booking.offer} onChanged={refreshBooking} />
-            </View>
-          )}
+            {error && (
+              <Text
+                style={{ color: "#dc2626", fontSize: 13, marginTop: Spacing.two }}
+              >
+                {error}
+              </Text>
+            )}
 
-          {error && (
-            <Text
-              style={{ color: "#dc2626", fontSize: 13, marginTop: Spacing.two }}
+            <Pressable
+              onPress={reviewWalletPayment}
+              disabled={insufficientWallet || expired}
+              style={[
+                styles.methodButton,
+                {
+                  borderColor: theme.border,
+                  opacity: insufficientWallet || expired ? 0.5 : 1,
+                },
+              ]}
             >
-              {error}
-            </Text>
-          )}
+              <Ionicons name="wallet-outline" size={20} color={theme.brand} />
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={{
+                    fontFamily: BrandFonts.uiSemiBold,
+                    color: theme.text,
+                    fontWeight: "700",
+                    fontSize: 15,
+                  }}
+                >
+                  Pay from wallet
+                </Text>
+                <Text
+                  style={{
+                    color: theme.textSecondary,
+                    fontSize: 12,
+                    marginTop: 2,
+                  }}
+                >
+                  Balance: {formatLkr(wallet?.balance ?? 0)}
+                  {insufficientWallet ? " · Insufficient balance" : ""}
+                </Text>
+              </View>
+              <Ionicons
+                name="chevron-forward"
+                size={18}
+                color={theme.textSecondary}
+              />
+            </Pressable>
 
-          <Pressable
-            onPress={reviewWalletPayment}
-            disabled={insufficientWallet || expired}
-            style={[
-              styles.methodButton,
-              {
-                borderColor: theme.border,
-                opacity: insufficientWallet || expired ? 0.5 : 1,
-              },
-            ]}
-          >
-            <Ionicons name="wallet-outline" size={20} color={theme.brand} />
-            <View style={{ flex: 1 }}>
-              <Text
-                style={{
-                  fontFamily: BrandFonts.uiSemiBold,
-                  color: theme.text,
-                  fontWeight: "700",
-                  fontSize: 15,
-                }}
-              >
-                Pay from wallet
-              </Text>
-              <Text
-                style={{
-                  color: theme.textSecondary,
-                  fontSize: 12,
-                  marginTop: 2,
-                }}
-              >
-                Balance: {formatLkr(wallet?.balance ?? 0)}
-                {insufficientWallet ? " · Insufficient balance" : ""}
-              </Text>
-            </View>
-            <Ionicons
-              name="chevron-forward"
-              size={18}
-              color={theme.textSecondary}
-            />
-          </Pressable>
-
-          <Pressable
-            onPress={payWithCard}
-            disabled={expired}
-            style={[
-              styles.methodButton,
-              { borderColor: theme.border, opacity: expired ? 0.5 : 1 },
-            ]}
-          >
-            <Ionicons name="card-outline" size={20} color={theme.brand} />
-            <View style={{ flex: 1 }}>
-              <Text
-                style={{
-                  fontFamily: BrandFonts.uiSemiBold,
-                  color: theme.text,
-                  fontWeight: "700",
-                  fontSize: 15,
-                }}
-              >
-                Pay with card
-              </Text>
-              <Text
-                style={{
-                  color: theme.textSecondary,
-                  fontSize: 12,
-                  marginTop: 2,
-                }}
-              >
-                Secure checkout
-              </Text>
-            </View>
-            <Image
-              source={require("../../../assets/images/payment.jpeg")}
-              style={styles.cardLogos}
-              resizeMode="contain"
-            />
-            <Ionicons
-              name="chevron-forward"
-              size={18}
-              color={theme.textSecondary}
-            />
-          </Pressable>
-        </ScrollView>
+            <Pressable
+              onPress={payWithCard}
+              disabled={expired}
+              style={[
+                styles.methodButton,
+                { borderColor: theme.border, opacity: expired ? 0.5 : 1 },
+              ]}
+            >
+              <Ionicons name="card-outline" size={20} color={theme.brand} />
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={{
+                    fontFamily: BrandFonts.uiSemiBold,
+                    color: theme.text,
+                    fontWeight: "700",
+                    fontSize: 15,
+                  }}
+                >
+                  Pay with card
+                </Text>
+                <Text
+                  style={{
+                    color: theme.textSecondary,
+                    fontSize: 12,
+                    marginTop: 2,
+                  }}
+                >
+                  Secure checkout
+                </Text>
+              </View>
+              <Image
+                source={require("../../../assets/images/payment.jpeg")}
+                style={styles.cardLogos}
+                resizeMode="contain"
+              />
+              <Ionicons
+                name="chevron-forward"
+                size={18}
+                color={theme.textSecondary}
+              />
+            </Pressable>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </View>
     );
   }

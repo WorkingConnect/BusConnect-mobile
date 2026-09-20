@@ -230,17 +230,25 @@ export default function TripDetailScreen() {
           <Ionicons name="share-outline" size={20} color="#fff" />
         </Pressable>
       </View>
+      {trip?.bus.operator?.logo_url ? (
+        <Image source={{ uri: trip.bus.operator.logo_url }} style={styles.heroLogo} />
+      ) : (
+        <View style={[styles.heroLogo, styles.heroLogoFallback]}>
+          <Text style={styles.heroLogoInitial}>{(trip?.bus.operator?.name ?? "?").slice(0, 1)}</Text>
+        </View>
+      )}
       <Text style={styles.heroTitle}>{trip?.bus.operator?.name ?? "Trip details"}</Text>
       {trip && (
         <>
-          <Text style={styles.heroSubtitle}>
-            {trip.bus.bus_type.name}
-            {trip.bus.bus_type.name.includes(trip.bus.reg_no) ? "" : ` · ${trip.bus.reg_no}`}
-          </Text>
           <View style={styles.heroBadgeRow}>
-            <View style={styles.heroBadge}>
-              <Text style={styles.heroBadgeText}>{trip.bus.bus_type.class.replace("_", " ")}</Text>
-            </View>
+            <Text style={styles.heroBadgeText}>{trip.bus.bus_type.name}</Text>
+            {!trip.bus.bus_type.name.includes(trip.bus.reg_no) && (
+              <>
+                <Text style={styles.heroBadgeDot}>·</Text>
+                <Text style={styles.heroBadgeText}>{trip.bus.reg_no}</Text>
+              </>
+            )}
+            <Text style={styles.heroBadgeDot}>·</Text>
             <View style={styles.heroBadge}>
               <Ionicons name="star" size={11} color="#fde68a" />
               <Text style={styles.heroBadgeText}>{(trip.bus.operator?.rating ?? 0).toFixed(1)}</Text>
@@ -654,6 +662,9 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.one,
   },
   backButton: {},
+  heroLogo: { width: 56, height: 56, borderRadius: 28, marginTop: Spacing.one },
+  heroLogoFallback: { alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.2)" },
+  heroLogoInitial: { fontFamily: BrandFonts.headingSemiBold, color: "#fff", fontSize: 22, fontWeight: "800" },
   heroTitle: {
     fontFamily: BrandFonts.headingSemiBold,
     fontSize: 22,
@@ -661,30 +672,22 @@ const styles = StyleSheet.create({
     color: "#fff",
     letterSpacing: -0.3,
     textAlign: "center",
-  },
-  heroSubtitle: {
-    fontFamily: BrandFonts.uiRegular,
-    fontSize: 13,
-    color: "rgba(255,255,255,0.85)",
-    marginTop: Spacing.one,
-    textAlign: "center",
+    marginTop: Spacing.two,
   },
   heroBadgeRow: {
     flexDirection: "row",
     flexWrap: "wrap",
+    alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    marginTop: Spacing.three,
+    marginTop: Spacing.two,
   },
   heroBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
   },
+  heroBadgeDot: { color: "rgba(255,255,255,0.6)", fontSize: 12 },
   heroBadgeText: {
     fontFamily: BrandFonts.uiSemiBold,
     color: "#fff",
