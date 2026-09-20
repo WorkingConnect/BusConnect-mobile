@@ -5,6 +5,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  TextInput,
   View,
 } from "react-native";
 import { Text } from "@/components/ui/text";
@@ -24,6 +25,8 @@ import {
   getBooking,
   getWallet,
   payBookingFromWallet,
+  applyBookingOffer,
+  removeBookingOffer,
   ApiError,
   type Booking,
   type MpgsCheckoutSession,
@@ -128,6 +131,110 @@ function checkoutHtml(checkout: MpgsCheckoutSession) {
 
 type Stage = "loading" | "choose" | "wallet-confirm" | "wallet-paying" | "card";
 
+/** Server validates + applies the code atomically (see applyBookingOffer's
+ *  doc comment) — this is just the input + applied/remove chip; `onChanged`
+ *  re-fetches the booking so discount_amount/offer reflect the server's
+ *  own math rather than anything computed here. */
+function PromoCodeField({
+  bookingId,
+  appliedOffer,
+  onChanged,
+}: {
+  bookingId: string;
+  appliedOffer?: { title: string; code: string } | null;
+  onChanged: () => void;
+}) {
+  const theme = useTheme();
+  const { session } = useAuth();
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function apply() {
+    if (!code.trim() || !session) return;
+    setError(null);
+    setBusy(true);
+    try {
+      await applyBookingOffer(session.access_token, bookingId, code.trim());
+      setCode("");
+      onChanged();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Could not apply that code.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove() {
+    if (!session) return;
+    setError(null);
+    setBusy(true);
+    try {
+      await removeBookingOffer(session.access_token, bookingId);
+      onChanged();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Could not remove the code.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (appliedOffer) {
+    return (
+      <View>
+        <View style={styles.promoAppliedRow}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flex: 1 }}>
+            <Ionicons name="pricetag" size={13} color="#047857" />
+            <Text style={{ color: "#047857", fontSize: 13 }}>
+              <Text style={{ fontWeight: "700" }}>{appliedOffer.code}</Text> applied
+            </Text>
+          </View>
+          <Pressable onPress={remove} disabled={busy} hitSlop={8}>
+            {busy ? (
+              <ActivityIndicator size="small" color="#047857" />
+            ) : (
+              <Text style={{ color: "#047857", fontWeight: "700", fontSize: 13 }}>Remove</Text>
+            )}
+          </Pressable>
+        </View>
+        {error && <Text style={styles.promoError}>{error}</Text>}
+      </View>
+    );
+  }
+
+  return (
+    <View>
+      <View style={{ flexDirection: "row", gap: 8 }}>
+        <TextInput
+          value={code}
+          onChangeText={setCode}
+          placeholder="Have a promo code?"
+          placeholderTextColor={theme.textSecondary}
+          autoCapitalize="characters"
+          autoCorrect={false}
+          editable={!busy}
+          style={[styles.promoInput, { borderColor: theme.border, color: theme.text }]}
+        />
+        <Pressable
+          onPress={apply}
+          disabled={busy || !code.trim()}
+          style={[
+            styles.promoApplyButton,
+            { borderColor: theme.border, opacity: busy || !code.trim() ? 0.5 : 1 },
+          ]}
+        >
+          {busy ? (
+            <ActivityIndicator size="small" color={theme.text} />
+          ) : (
+            <Text style={{ color: theme.text, fontWeight: "700", fontSize: 13 }}>Apply</Text>
+          )}
+        </Pressable>
+      </View>
+      {error && <Text style={styles.promoError}>{error}</Text>}
+    </View>
+  );
+}
+
 export default function CheckoutScreen() {
   const theme = useTheme();
   const { session } = useAuth();
@@ -149,6 +256,19 @@ export default function CheckoutScreen() {
   // computed the same way on both charging paths (mpgs.service.ts,
   // pay_booking_from_wallet()). Falls back to 2 only if it's ever missing.
   const convenienceFeePct = booking?.trip?.bus?.operator?.convenience_fee_pct ?? 2;
+  const discountAmount = Number(booking?.discount_amount ?? 0);
+  const subtotalAfterDiscount = amount !== null ? amount - discountAmount : null;
+  const totalWithFee =
+    subtotalAfterDiscount !== null ? subtotalAfterDiscount * (1 + convenienceFeePct / 100) : null;
+
+  async function refreshBooking() {
+    if (!id || !session) return;
+    try {
+      setBooking(await getBooking(session.access_token, id));
+    } catch {
+      // best-effort — PromoCodeField already shows its own apply/remove error
+    }
+  }
 
   // The seat hold behind this booking runs out ~8 minutes after the seats
   // were first selected on the seat map (create_booking() links the same
@@ -313,7 +433,7 @@ export default function CheckoutScreen() {
 
   if (stage === "choose") {
     const insufficientWallet =
-      wallet !== null && amount !== null && wallet.balance < amount;
+      wallet !== null && totalWithFee !== null && wallet.balance < totalWithFee;
     return (
       <View style={{ flex: 1, backgroundColor: theme.background }}>
         {hero}
@@ -428,12 +548,20 @@ export default function CheckoutScreen() {
                   {formatLkr(booking.amount)}
                 </Text>
               </View>
+              {discountAmount > 0 && (
+                <View style={styles.summaryRow}>
+                  <Text style={{ color: theme.textSecondary, fontSize: 14 }}>
+                    Discount{booking.offer?.code ? ` (${booking.offer.code})` : ""}
+                  </Text>
+                  <Text style={{ color: "#059669", fontSize: 14 }}>-{formatLkr(discountAmount)}</Text>
+                </View>
+              )}
               <View style={styles.summaryRow}>
                 <Text style={{ color: theme.textSecondary, fontSize: 14 }}>
                   Convenience fee ({convenienceFeePct}%)
                 </Text>
                 <Text style={{ color: theme.text, fontSize: 14 }}>
-                  {formatLkr(booking.amount * (convenienceFeePct / 100))}
+                  {formatLkr((subtotalAfterDiscount ?? 0) * (convenienceFeePct / 100))}
                 </Text>
               </View>
 
@@ -458,7 +586,7 @@ export default function CheckoutScreen() {
                     fontSize: 16,
                   }}
                 >
-                  {formatLkr(booking.amount * (1 + convenienceFeePct / 100))}
+                  {formatLkr(totalWithFee ?? 0)}
                 </Text>
               </View>
             </View>
@@ -489,6 +617,12 @@ export default function CheckoutScreen() {
               These seats may have been given to someone else. Go back and
               select seats again.
             </Text>
+          )}
+
+          {booking && (
+            <View style={{ marginBottom: Spacing.four }}>
+              <PromoCodeField bookingId={booking.id} appliedOffer={booking.offer} onChanged={refreshBooking} />
+            </View>
           )}
 
           {error && (
@@ -587,8 +721,8 @@ export default function CheckoutScreen() {
   }
 
   if (stage === "wallet-confirm" && booking) {
-    const totalWithFee = booking.amount * (1 + convenienceFeePct / 100);
-    const insufficientWallet = wallet !== null && wallet.balance < totalWithFee;
+    const total = totalWithFee ?? 0;
+    const insufficientWallet = wallet !== null && wallet.balance < total;
     return (
       <View style={{ flex: 1, backgroundColor: theme.background }}>
         {hero}
@@ -617,7 +751,7 @@ export default function CheckoutScreen() {
                   fontWeight: "800",
                 }}
               >
-                {formatLkr(totalWithFee)}
+                {formatLkr(total)}
               </Text>
             </View>
           </View>
@@ -648,7 +782,7 @@ export default function CheckoutScreen() {
                 ? "Seat hold expired"
                 : insufficientWallet
                   ? "Insufficient balance"
-                  : `Pay ${formatLkr(totalWithFee)}`}
+                  : `Pay ${formatLkr(total)}`}
             </Text>
           </Pressable>
 
@@ -725,6 +859,35 @@ export default function CheckoutScreen() {
 
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
+  promoInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: 10,
+    fontSize: 14,
+    textTransform: "uppercase",
+  },
+  promoApplyButton: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: Spacing.four,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  promoAppliedRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: Spacing.three,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#a7f3d0",
+    backgroundColor: "#ecfdf5",
+    paddingHorizontal: Spacing.three,
+    paddingVertical: 10,
+  },
+  promoError: { color: "#dc2626", fontSize: 12, marginTop: 6 },
   hero: {
     alignItems: "center",
     paddingHorizontal: Spacing.four,

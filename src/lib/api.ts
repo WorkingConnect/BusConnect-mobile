@@ -195,6 +195,15 @@ export interface Booking {
   /** All rows share the same expires_at — they're created together by one
    *  hold_seats() call and linked to this booking as a group. */
   holds?: { expires_at: string }[];
+  discount_amount?: number;
+  offer?: { title: string; code: string } | null;
+}
+
+export interface ApplyOfferResult {
+  ok: boolean;
+  discount_amount?: number;
+  offer_title?: string;
+  offer_code?: string;
 }
 
 export interface CancelResult {
@@ -378,6 +387,23 @@ export function getMyReview(accessToken: string, tripId: string) {
 
 export function checkoutBooking(accessToken: string, bookingId: string) {
   return request<MpgsCheckoutSession>(`/bookings/${bookingId}/pay`, {
+    method: "POST",
+    accessToken,
+  });
+}
+
+/** Server validates + applies the code atomically — never trust a
+ *  client-computed discount for anything payment-affecting. */
+export function applyBookingOffer(accessToken: string, bookingId: string, code: string) {
+  return request<ApplyOfferResult>(`/bookings/${bookingId}/apply-offer`, {
+    method: "POST",
+    body: JSON.stringify({ code }),
+    accessToken,
+  });
+}
+
+export function removeBookingOffer(accessToken: string, bookingId: string) {
+  return request<{ ok: true }>(`/bookings/${bookingId}/remove-offer`, {
     method: "POST",
     accessToken,
   });

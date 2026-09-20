@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
+  Animated,
+  Dimensions,
   Image,
   Modal,
   Pressable,
@@ -9,6 +11,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import * as Clipboard from "expo-clipboard";
 import { Ionicons } from "@expo/vector-icons";
 import { Text } from "@/components/ui/text";
@@ -54,7 +57,13 @@ export function OfferCardVisual({ offer, style }: { offer: Offer; style?: StyleP
       ) : (
         <View style={[styles.image, { backgroundColor: fallbackColor }]} />
       )}
-      {hasImage && <View style={styles.scrim} />}
+      {hasImage && (
+        <LinearGradient
+          colors={["transparent", "rgba(0,0,0,0.55)"]}
+          locations={[0.35, 1]}
+          style={styles.scrim}
+        />
+      )}
 
       <View style={styles.codeChip}>
         <Ionicons name="pricetag" size={13} color="#0f172a" />
@@ -64,13 +73,48 @@ export function OfferCardVisual({ offer, style }: { offer: Offer; style?: StyleP
   );
 }
 
+const SCREEN_HEIGHT = Dimensions.get("window").height;
+
 /** Tapping the card opens its details in a bottom sheet in place, rather
  *  than navigating to a screen — offers are a quick "what's the code"
- *  glance, not worth leaving the current screen for. */
+ *  glance, not worth leaving the current screen for. The backdrop and sheet
+ *  are animated by hand (rather than relying on Modal's own
+ *  animationType="slide") because that built-in animation slides the
+ *  backdrop up as part of the same sliding block as the sheet, so the
+ *  dimming pops in abruptly instead of fading — a plain opacity fade on the
+ *  backdrop, running alongside the sheet's slide, is the standard fix. */
 export function OfferCard({ offer, width }: { offer: Offer; width: number }) {
   const theme = useTheme();
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [overlayOpacity] = useState(() => new Animated.Value(0));
+  const [sheetTranslateY] = useState(() => new Animated.Value(SCREEN_HEIGHT));
+
+  // Mount immediately on open — adjusting state during render (React's own
+  // recipe for "sync state to a prop/state change") rather than in the
+  // effect below, so the Modal is already present by the time that effect
+  // starts animating it in. Unmounting instead waits for the close
+  // animation's own completion callback, since that's inherently async.
+  if (open && !mounted) {
+    setMounted(true);
+  }
+
+  useEffect(() => {
+    if (open) {
+      Animated.parallel([
+        Animated.timing(overlayOpacity, { toValue: 1, duration: 220, useNativeDriver: true }),
+        Animated.timing(sheetTranslateY, { toValue: 0, duration: 260, useNativeDriver: true }),
+      ]).start();
+    } else if (mounted) {
+      Animated.parallel([
+        Animated.timing(overlayOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
+        Animated.timing(sheetTranslateY, { toValue: SCREEN_HEIGHT, duration: 200, useNativeDriver: true }),
+      ]).start(({ finished }) => {
+        if (finished) setMounted(false);
+      });
+    }
+  }, [open, mounted, overlayOpacity, sheetTranslateY]);
 
   async function copyCode() {
     await Clipboard.setStringAsync(offer.code);
@@ -84,53 +128,62 @@ export function OfferCard({ offer, width }: { offer: Offer; width: number }) {
         <OfferCardVisual offer={offer} />
       </Pressable>
 
-      <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
-        <Pressable style={styles.modalOverlay} onPress={() => setOpen(false)}>
-          <Pressable
-            style={[styles.sheet, { backgroundColor: theme.backgroundElement }]}
-            onPress={(e) => e.stopPropagation()}
-          >
-            <View style={[styles.sheetHandle, { backgroundColor: theme.border }]} />
-
-            <View style={styles.sheetHeader}>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.sheetTitle, { color: theme.text }]}>{offer.title}</Text>
-                <Text style={{ color: theme.textSecondary, fontSize: 13, marginTop: 2 }}>
-                  Valid till {formatValidTill(offer.validTill)}
-                </Text>
-              </View>
-              <Pressable onPress={() => setOpen(false)} hitSlop={8}>
-                <Ionicons name="close" size={22} color={theme.textSecondary} />
-              </Pressable>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <OfferCardVisual offer={offer} style={{ marginTop: Spacing.four }} />
-
-              {offer.terms.length > 0 && (
-                <View style={{ marginTop: Spacing.five }}>
-                  <Text style={[styles.sheetSectionTitle, { color: theme.text }]}>Terms &amp; conditions</Text>
-                  {offer.terms.map((term, i) => (
-                    <View key={i} style={styles.termRow}>
-                      <View style={[styles.termDot, { backgroundColor: theme.textSecondary }]} />
-                      <Text style={{ flex: 1, color: theme.textSecondary, fontSize: 13, lineHeight: 18 }}>
-                        {term}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-
-              <Pressable
-                onPress={copyCode}
-                style={[styles.copyButton, { backgroundColor: theme.brand }]}
-              >
-                <Ionicons name={copied ? "checkmark" : "copy-outline"} size={17} color="#fff" />
-                <Text style={styles.copyButtonText}>{copied ? "Copied!" : "Copy offer code"}</Text>
-              </Pressable>
-            </ScrollView>
+      <Modal visible={mounted} transparent animationType="none" onRequestClose={() => setOpen(false)}>
+        <View style={styles.modalRoot}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setOpen(false)}>
+            <Animated.View style={[StyleSheet.absoluteFill, styles.modalOverlayBg, { opacity: overlayOpacity }]} />
           </Pressable>
-        </Pressable>
+
+          <Animated.View
+            style={[styles.sheetSlide, { transform: [{ translateY: sheetTranslateY }] }]}
+            pointerEvents="box-none"
+          >
+            <Pressable
+              style={[styles.sheet, { backgroundColor: theme.backgroundElement }]}
+              onPress={(e) => e.stopPropagation()}
+            >
+              <View style={[styles.sheetHandle, { backgroundColor: theme.border }]} />
+
+              <View style={styles.sheetHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.sheetTitle, { color: theme.text }]}>{offer.title}</Text>
+                  <Text style={{ color: theme.textSecondary, fontSize: 13, marginTop: 2 }}>
+                    Valid till {formatValidTill(offer.validTill)}
+                  </Text>
+                </View>
+                <Pressable onPress={() => setOpen(false)} hitSlop={8}>
+                  <Ionicons name="close" size={22} color={theme.textSecondary} />
+                </Pressable>
+              </View>
+
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <OfferCardVisual offer={offer} style={{ marginTop: Spacing.four }} />
+
+                {offer.terms.length > 0 && (
+                  <View style={{ marginTop: Spacing.five }}>
+                    <Text style={[styles.sheetSectionTitle, { color: theme.text }]}>Terms &amp; conditions</Text>
+                    {offer.terms.map((term, i) => (
+                      <View key={i} style={styles.termRow}>
+                        <View style={[styles.termDot, { backgroundColor: theme.textSecondary }]} />
+                        <Text style={{ flex: 1, color: theme.textSecondary, fontSize: 13, lineHeight: 18 }}>
+                          {term}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                <Pressable
+                  onPress={copyCode}
+                  style={[styles.copyButton, { backgroundColor: theme.brand }]}
+                >
+                  <Ionicons name={copied ? "checkmark" : "copy-outline"} size={17} color="#fff" />
+                  <Text style={styles.copyButtonText}>{copied ? "Copied!" : "Copy offer code"}</Text>
+                </Pressable>
+              </ScrollView>
+            </Pressable>
+          </Animated.View>
+        </View>
       </Modal>
     </>
   );
@@ -144,8 +197,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    height: "45%",
-    backgroundColor: "rgba(0,0,0,0.45)",
+    height: "70%",
   },
   codeChip: {
     position: "absolute",
@@ -160,7 +212,9 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
   },
   codeChipText: { fontFamily: BrandFonts.uiSemiBold, color: "#0f172a", fontWeight: "700", fontSize: 12 },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
+  modalRoot: { flex: 1, justifyContent: "flex-end" },
+  modalOverlayBg: { backgroundColor: "rgba(0,0,0,0.5)" },
+  sheetSlide: {},
   sheet: {
     width: "100%",
     maxHeight: "85%",

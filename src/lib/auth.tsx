@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { InteractionManager } from "react-native";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
 import { registerForPushNotifications, unregisterCurrentPushToken } from "./push-notifications";
@@ -44,10 +45,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Register the device's push token once per signed-in user — not on every
   // token refresh (onAuthStateChange fires repeatedly for the same user).
+  // Deferred past the current navigation transition: this fires the instant
+  // sign-in succeeds, which is the exact same moment login.tsx's goNext()
+  // does router.replace() back to wherever the user was headed — presenting
+  // the native "Allow Notifications" permission dialog while a full
+  // navigation-stack transition is still animating is a known source of
+  // native crashes on iOS.
   useEffect(() => {
     if (!session || pushRegisteredForUser.current === session.user.id) return;
     pushRegisteredForUser.current = session.user.id;
-    void registerForPushNotifications(session.access_token);
+    const task = InteractionManager.runAfterInteractions(() => {
+      void registerForPushNotifications(session.access_token);
+    });
+    return () => task.cancel();
   }, [session]);
 
   async function signOut() {
