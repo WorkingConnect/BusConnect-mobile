@@ -763,7 +763,6 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#fff",
     letterSpacing: -0.3,
-    maxWidth: 240,
   },
   tagline: {
     fontSize: 13,

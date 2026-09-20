@@ -156,7 +156,7 @@ export function OfferCard({ offer, width }: { offer: Offer; width: number }) {
                 </Pressable>
               </View>
 
-              <ScrollView showsVerticalScrollIndicator={false}>
+              <ScrollView showsVerticalScrollIndicator={false} style={styles.sheetScroll}>
                 <OfferCardVisual offer={offer} style={{ marginTop: Spacing.four }} />
 
                 {offer.terms.length > 0 && (
@@ -215,13 +215,23 @@ const styles = StyleSheet.create({
   modalRoot: { flex: 1, justifyContent: "flex-end" },
   modalOverlayBg: { backgroundColor: "rgba(0,0,0,0.5)" },
   sheetSlide: {},
+  // maxHeight is an absolute pixel value, not "85%" — a percentage here
+  // needs its DIRECT parent (the Animated.View above) to have a definite
+  // height to resolve against, which it doesn't, so it was silently
+  // ignored. Without an actual cap, `sheet` grew to fit all of its content
+  // and the ScrollView below never had a bounded size to scroll within,
+  // so on a shorter offer (no terms) content could render past the visible
+  // sheet with no way to reach the copy button.
   sheet: {
     width: "100%",
-    maxHeight: "85%",
+    maxHeight: SCREEN_HEIGHT * 0.85,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: Spacing.five,
   },
+  // flexShrink lets this actually give up space to sheet's maxHeight cap
+  // instead of always rendering at its full content height.
+  sheetScroll: { flexShrink: 1 },
   sheetHandle: { alignSelf: "center", width: 40, height: 5, borderRadius: 3, marginBottom: Spacing.three },
   sheetHeader: { flexDirection: "row", alignItems: "flex-start", gap: Spacing.three },
   sheetTitle: { fontFamily: BrandFonts.headingSemiBold, fontSize: 19, fontWeight: "800" },

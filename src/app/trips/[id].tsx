@@ -75,10 +75,19 @@ export default function TripDetailScreen() {
   }, [id]);
 
   // Live seat updates via Supabase Realtime, same pattern as the web app.
+  // The topic includes a random suffix, unique per effect run, rather than
+  // just `seat_holds:${id}` — the cleanup below fires removeChannel() but
+  // doesn't await it (it can't; effect cleanups are sync), and navigating
+  // away and back to this same trip (e.g. guest -> login -> back here)
+  // can re-run this effect before that removal actually finishes
+  // server-side. A reused topic name then has supabase-js hand back the
+  // still-subscribing old channel instead of a fresh one, and calling
+  // `.on()` on an already-subscribed channel throws — a unique topic per
+  // instance makes that collision impossible regardless of timing.
   useEffect(() => {
     if (!id) return;
     const channel = supabase
-      .channel(`seat_holds:${id}`)
+      .channel(`seat_holds:${id}:${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "seat_holds", filter: `trip_id=eq.${id}` },
