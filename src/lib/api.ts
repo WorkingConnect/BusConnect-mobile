@@ -433,6 +433,16 @@ export function listWalletTransactions(accessToken: string) {
   return request<WalletTransaction[]>("/wallet/transactions", { accessToken });
 }
 
+/** Hides the transaction from this passenger's own Recent Activity list —
+ *  the ledger row itself is untouched server-side (see api's
+ *  0103_wallet_transaction_hide.sql). */
+export function hideWalletTransaction(accessToken: string, id: string) {
+  return request<{ ok: true }>(`/wallet/transactions/${id}`, {
+    method: "DELETE",
+    accessToken,
+  });
+}
+
 export function topupWallet(accessToken: string, amount: number) {
   return request<MpgsCheckoutSession>("/wallet/topup", {
     method: "POST",

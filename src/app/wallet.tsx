@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -8,6 +8,9 @@ import {
 } from "react-native";
 import { Text } from "@/components/ui/text";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import Swipeable, { type SwipeableMethods } from "react-native-gesture-handler/ReanimatedSwipeable";
+import Animated, { type SharedValue, useAnimatedStyle } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import { useTheme } from "@/hooks/use-theme";
@@ -15,6 +18,7 @@ import { useAuth } from "@/lib/auth";
 import {
   getWallet,
   listWalletTransactions,
+  hideWalletTransaction,
   ApiError,
   type Wallet,
   type WalletTransaction,
@@ -61,6 +65,17 @@ export default function WalletScreen() {
 
   useFocusEffect(load);
 
+  async function onDeleteTransaction(id: string) {
+    if (!session) return;
+    setTransactions((prev) => prev?.filter((t) => t.id !== id) ?? null);
+    try {
+      await hideWalletTransaction(session.access_token, id);
+    } catch {
+      // Best-effort — a failed hide just means it reappears next time this
+      // screen loads, the same fallback notifications.tsx's swipe uses.
+    }
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
       <SafeAreaView
@@ -80,141 +95,184 @@ export default function WalletScreen() {
         </View>
       </SafeAreaView>
 
-      <FlatList
-        contentContainerStyle={styles.list}
-        data={(transactions ?? []).filter((t) => t.status === "completed")}
-        keyExtractor={(t) => t.id}
-        ListHeaderComponent={
-          <>
-            <View
-              style={[
-                styles.passCard,
-                {
-                  backgroundColor: theme.backgroundElement,
-                  borderColor: theme.border,
-                },
-              ]}
-            >
-              <View style={styles.passBody}>
-                <Text style={[styles.passLabel, { color: theme.brand }]}>
-                  BusConnect Wallet
-                </Text>
-                <Text
-                  style={{
-                    color: theme.textSecondary,
-                    fontSize: 12,
-                    marginTop: 4,
-                  }}
-                >
-                  Use your balance to pay for tickets instantly
-                </Text>
-
-                <View
-                  style={[styles.dashedDivider, { borderColor: theme.border }]}
-                />
-
-                <Pressable
-                  onPress={() => router.push("/wallet-topup")}
-                  style={[styles.topupButton, { backgroundColor: theme.brand }]}
-                >
-                  <Ionicons name="add-circle-outline" size={18} color="#fff" />
-                  <Text style={styles.topupButtonText}>Top up wallet</Text>
-                </Pressable>
-              </View>
-              <View style={styles.balanceFooter}>
-                <Text style={[styles.balanceFooterLabel, { color: theme.textSecondary }]}>
-                  Balance
-                </Text>
-                <Text style={[styles.balanceFooterValue, { color: theme.text }]}>
-                  {formatLkr(wallet?.balance ?? 0)}
-                </Text>
-              </View>
-            </View>
-
-            {error && (
-              <View style={{ marginTop: Spacing.three }}>
-                <Banner tone="error" message={error} />
-              </View>
-            )}
-
-            <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>
-              Recent activity
-            </Text>
-          </>
-        }
-        renderItem={({ item }) => (
-          <View style={[styles.txRow, { borderColor: theme.border }]}>
-            <View
-              style={[
-                styles.txIcon,
-                {
-                  backgroundColor:
-                    item.type === "topup" ? "#dcfce7" : "#dbeafe",
-                },
-              ]}
-            >
-              <Ionicons
-                name={item.type === "topup" ? "add" : "ticket-outline"}
-                size={16}
-                color={item.type === "topup" ? "#16a34a" : "#1d4ed8"}
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text
-                style={{ color: theme.text, fontWeight: "600", fontSize: 14 }}
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <FlatList
+          contentContainerStyle={styles.list}
+          data={(transactions ?? []).filter((t) => t.status === "completed")}
+          keyExtractor={(t) => t.id}
+          ListHeaderComponent={
+            <>
+              <View
+                style={[
+                  styles.passCard,
+                  {
+                    backgroundColor: theme.backgroundElement,
+                    borderColor: theme.border,
+                  },
+                ]}
               >
-                {TX_LABEL[item.type]}
+                <View style={styles.passBody}>
+                  <Text style={[styles.passLabel, { color: theme.brand }]}>
+                    BusConnect Wallet
+                  </Text>
+                  <Text
+                    style={{
+                      color: theme.textSecondary,
+                      fontSize: 12,
+                      marginTop: 4,
+                    }}
+                  >
+                    Use your balance to pay for tickets instantly
+                  </Text>
+
+                  <View
+                    style={[styles.dashedDivider, { borderColor: theme.border }]}
+                  />
+
+                  <Pressable
+                    onPress={() => router.push("/wallet-topup")}
+                    style={[styles.topupButton, { backgroundColor: theme.brand }]}
+                  >
+                    <Ionicons name="add-circle-outline" size={18} color="#fff" />
+                    <Text style={styles.topupButtonText}>Top up wallet</Text>
+                  </Pressable>
+                </View>
+                <View style={styles.balanceFooter}>
+                  <Text style={[styles.balanceFooterLabel, { color: theme.textSecondary }]}>
+                    Balance
+                  </Text>
+                  <Text style={[styles.balanceFooterValue, { color: theme.text }]}>
+                    {formatLkr(wallet?.balance ?? 0)}
+                  </Text>
+                </View>
+              </View>
+
+              {error && (
+                <View style={{ marginTop: Spacing.three }}>
+                  <Banner tone="error" message={error} />
+                </View>
+              )}
+
+              <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>
+                Recent activity
               </Text>
+            </>
+          }
+          renderItem={({ item }) => (
+            <TransactionRow item={item} theme={theme} onDelete={() => onDeleteTransaction(item.id)} />
+          )}
+          ListEmptyComponent={
+            transactions && transactions.length === 0 ? (
               <Text
                 style={{
                   color: theme.textSecondary,
-                  fontSize: 12,
-                  marginTop: 2,
+                  textAlign: "center",
+                  marginTop: Spacing.four,
                 }}
               >
-                {new Date(item.created_at).toLocaleString("en-LK", {
-                  day: "numeric",
-                  month: "short",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+                No wallet activity yet.
               </Text>
-            </View>
-            <Text
-              style={{
-                color:
-                  item.type === "topup" || item.type === "refund"
-                    ? "#16a34a"
-                    : theme.text,
-                fontWeight: "700",
-                fontSize: 14,
-              }}
-            >
-              {item.type === "topup" || item.type === "refund" ? "+" : "-"}
-              {formatLkr(item.amount)}
-            </Text>
-          </View>
-        )}
-        ListEmptyComponent={
-          transactions && transactions.length === 0 ? (
-            <Text
-              style={{
-                color: theme.textSecondary,
-                textAlign: "center",
-                marginTop: Spacing.four,
-              }}
-            >
-              No wallet activity yet.
-            </Text>
-          ) : !transactions ? (
-            <ActivityIndicator
-              color={theme.brand}
-              style={{ marginTop: Spacing.five }}
-            />
-          ) : null
-        }
-      />
+            ) : !transactions ? (
+              <ActivityIndicator
+                color={theme.brand}
+                style={{ marginTop: Spacing.five }}
+              />
+            ) : null
+          }
+        />
+      </GestureHandlerRootView>
     </View>
+  );
+}
+
+/** Swipe left to reveal a delete button — hides the transaction from this
+ *  list only (see hideWalletTransaction's doc comment); the ledger row
+ *  itself is untouched. Mirrors notifications.tsx's NotificationRow. */
+function TransactionRow({
+  item,
+  theme,
+  onDelete,
+}: {
+  item: WalletTransaction;
+  theme: ReturnType<typeof useTheme>;
+  onDelete: () => void;
+}) {
+  const swipeableRef = useRef<SwipeableMethods>(null);
+
+  function renderRightActions(progress: SharedValue<number>) {
+    const style = useAnimatedStyle(() => ({
+      transform: [{ scale: Math.min(progress.value, 1) }],
+    }));
+    return (
+      <Animated.View style={[styles.deleteAction, style]}>
+        <Pressable
+          onPress={() => {
+            swipeableRef.current?.close();
+            onDelete();
+          }}
+          style={styles.deleteButton}
+          hitSlop={8}
+        >
+          <Ionicons name="trash-outline" size={20} color="#fff" />
+        </Pressable>
+      </Animated.View>
+    );
+  }
+
+  return (
+    <Swipeable ref={swipeableRef} renderRightActions={renderRightActions} friction={2} rightThreshold={40}>
+      <View style={[styles.txRow, { borderColor: theme.border, backgroundColor: theme.background }]}>
+        <View
+          style={[
+            styles.txIcon,
+            {
+              backgroundColor:
+                item.type === "topup" ? "#dcfce7" : "#dbeafe",
+            },
+          ]}
+        >
+          <Ionicons
+            name={item.type === "topup" ? "add" : "ticket-outline"}
+            size={16}
+            color={item.type === "topup" ? "#16a34a" : "#1d4ed8"}
+          />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text
+            style={{ color: theme.text, fontWeight: "600", fontSize: 14 }}
+          >
+            {TX_LABEL[item.type]}
+          </Text>
+          <Text
+            style={{
+              color: theme.textSecondary,
+              fontSize: 12,
+              marginTop: 2,
+            }}
+          >
+            {new Date(item.created_at).toLocaleString("en-LK", {
+              day: "numeric",
+              month: "short",
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </Text>
+        </View>
+        <Text
+          style={{
+            color:
+              item.type === "topup" || item.type === "refund"
+                ? "#16a34a"
+                : theme.text,
+            fontWeight: "700",
+            fontSize: 14,
+          }}
+        >
+          {item.type === "topup" || item.type === "refund" ? "+" : "-"}
+          {formatLkr(item.amount)}
+        </Text>
+      </View>
+    </Swipeable>
   );
 }
 
@@ -308,6 +366,15 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  deleteAction: { justifyContent: "center", alignItems: "flex-end", paddingLeft: Spacing.two },
+  deleteButton: {
+    backgroundColor: "#dc2626",
+    borderRadius: 14,
+    width: 52,
+    height: "100%",
     alignItems: "center",
     justifyContent: "center",
   },
