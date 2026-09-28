@@ -28,10 +28,13 @@ import {
   type SeatState,
   type TripCrew,
   type CrewMember,
+  type TravelMode,
 } from "@/lib/api";
 import { layoutToGrid } from "@/lib/seat-layout";
 import { Banner } from "@/components/banner";
 import { Spacing, BrandFonts } from "@/constants/theme";
+import { TRAVEL_MODE_ICONS, TRAVEL_MODE_OPTIONS } from "@/lib/travel-mode-icons";
+import { useThemeMode } from "@/lib/theme-mode-context";
 
 function formatTripTime(iso: string) {
   return new Date(iso).toLocaleTimeString("en-LK", { hour: "2-digit", minute: "2-digit" });
@@ -47,6 +50,7 @@ const SEAT_COLOR = {
 
 export default function TripDetailScreen() {
   const theme = useTheme();
+  const { resolvedScheme } = useThemeMode();
   const { session } = useAuth();
   const { id, from, to } = useLocalSearchParams<{ id: string; from: string; to: string }>();
 
@@ -58,6 +62,7 @@ export default function TripDetailScreen() {
   const [genders, setGenders] = useState<Map<string, "male" | "female">>(new Map());
   const [genderPromptSeat, setGenderPromptSeat] = useState<string | null>(null);
   const [signInPromptOpen, setSignInPromptOpen] = useState(false);
+  const [travelModePromptOpen, setTravelModePromptOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [stopPickerMode, setStopPickerMode] = useState<"from" | "to" | null>(null);
 
@@ -169,13 +174,19 @@ export default function TripDetailScreen() {
     setGenderPromptSeat(null);
   }
 
-  async function handleContinue() {
+  function handleContinue() {
     if (selected.size === 0 || !id || !from || !to) return;
     if (!session) {
       setSignInPromptOpen(true);
       return;
     }
     setError(null);
+    setTravelModePromptOpen(true);
+  }
+
+  async function confirmBooking(travelMode?: TravelMode) {
+    setTravelModePromptOpen(false);
+    if (!id || !from || !to || !session) return;
     setBusy(true);
     try {
       const hold = await createHold(session.access_token, {
@@ -186,6 +197,7 @@ export default function TripDetailScreen() {
         holdGroup: hold.hold_group,
         fromStopId: from,
         toStopId: to,
+        travelMode,
       });
       router.push({ pathname: "/checkout/[id]", params: { id: booking.booking_id } });
     } catch (e) {
@@ -510,6 +522,55 @@ export default function TripDetailScreen() {
         </Pressable>
       </Modal>
 
+      <Modal
+        visible={travelModePromptOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setTravelModePromptOpen(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setTravelModePromptOpen(false)}>
+          <Pressable
+            style={[styles.travelModeSheet, { backgroundColor: theme.backgroundElement }]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Text
+              style={{
+                fontFamily: BrandFonts.uiSemiBold,
+                color: theme.text,
+                fontWeight: "700",
+                fontSize: 15,
+              }}
+            >
+              If not by bus, you&apos;d usually travel by
+            </Text>
+            <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 2 }}>
+              Helps us show how much CO2 this trip saves. Optional.
+            </Text>
+            <View style={styles.travelModeGrid}>
+              {TRAVEL_MODE_OPTIONS.map((opt) => (
+                <Pressable
+                  key={opt.value}
+                  onPress={() => confirmBooking(opt.value)}
+                  style={[styles.travelModeOption, { borderColor: theme.border }]}
+                >
+                  <Image
+                    source={TRAVEL_MODE_ICONS[opt.value][resolvedScheme]}
+                    style={{ width: 22, height: 22 }}
+                    resizeMode="contain"
+                  />
+                  <Text style={{ fontFamily: BrandFonts.uiMedium, color: theme.text, fontSize: 13, fontWeight: "600" }}>
+                    {opt.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+            <Pressable onPress={() => confirmBooking(undefined)} hitSlop={8} style={{ marginTop: Spacing.three, alignSelf: "center" }}>
+              <Text style={{ color: theme.textSecondary, fontSize: 13, fontWeight: "600" }}>Skip</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       <Modal visible={!!genderPromptSeat} transparent animationType="fade" onRequestClose={() => setGenderPromptSeat(null)}>
         <Pressable style={styles.modalOverlay} onPress={() => setGenderPromptSeat(null)}>
           <View style={[styles.genderSheet, { backgroundColor: theme.backgroundElement }]}>
@@ -754,6 +815,18 @@ const styles = StyleSheet.create({
   continueText: { fontFamily: BrandFonts.uiSemiBold, color: "#fff", fontWeight: "700", fontSize: 16 },
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center" },
   genderSheet: { borderRadius: 16, padding: Spacing.four, width: 260 },
+  travelModeSheet: { borderRadius: 20, padding: Spacing.four, width: 300 },
+  travelModeGrid: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.two, marginTop: Spacing.three },
+  travelModeOption: {
+    flexBasis: "47%",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.one,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+  },
   signInSheet: { borderRadius: 20, padding: Spacing.five, width: 300, alignItems: "center" },
   signInButton: {
     marginTop: Spacing.four,

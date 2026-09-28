@@ -25,9 +25,13 @@ import { useAuth } from "@/lib/auth";
 import {
   getMyProfile,
   updateMyProfile,
+  getMyCo2Impact,
   ApiError,
   type MyProfile,
+  type Co2Impact,
+  type TravelMode,
 } from "@/lib/api";
+import { TRAVEL_MODE_ICONS, TRAVEL_MODE_OPTIONS } from "@/lib/travel-mode-icons";
 import { PhoneField } from "@/components/phone-field";
 import { stripCountryCode, toE164, formatPhoneDisplay } from "@/lib/phone";
 import {
@@ -46,6 +50,7 @@ export default function ProfileScreen() {
   const theme = useTheme();
   const { session, loading: authLoading, signOut } = useAuth();
   const [profile, setProfile] = useState<MyProfile | null>(null);
+  const [co2Impact, setCo2Impact] = useState<Co2Impact | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadErrorOffline, setLoadErrorOffline] = useState(false);
   const [retryTick, setRetryTick] = useState(0);
@@ -78,6 +83,11 @@ export default function ProfileScreen() {
           e instanceof ApiError ? e.message : "Could not reach BusConnect-api.",
         );
       });
+    // Best-effort — a hiccup fetching the impact counter shouldn't affect
+    // the rest of the profile screen, it just means the card doesn't render.
+    getMyCo2Impact(session.access_token)
+      .then(setCo2Impact)
+      .catch(() => setCo2Impact(null));
   }, [session, retryTick]);
 
   // A failed load doesn't retry on its own — reconnecting alone doesn't
@@ -193,6 +203,16 @@ export default function ProfileScreen() {
             onSaved={setProfile}
             theme={theme}
           />
+
+          {co2Impact && co2Impact.tripCount > 0 && (
+            <Co2ImpactSection
+              impact={co2Impact}
+              travelMode={profile.travel_mode}
+              accessToken={session.access_token}
+              onSaved={(mode) => setProfile((p) => (p ? { ...p, travel_mode: mode } : p))}
+              theme={theme}
+            />
+          )}
 
           <PreferencesSection theme={theme} session={session} />
           <SupportSection theme={theme} />
@@ -515,6 +535,112 @@ function ReadOnlyRow({
       >
         {value || "-"}
       </Text>
+    </View>
+  );
+}
+
+function Co2ImpactSection({
+  impact,
+  travelMode: initialTravelMode,
+  accessToken,
+  onSaved,
+  theme,
+}: {
+  impact: Co2Impact;
+  travelMode: TravelMode | null;
+  accessToken: string;
+  onSaved: (mode: TravelMode) => void;
+  theme: ReturnType<typeof useTheme>;
+}) {
+  const { resolvedScheme } = useThemeMode();
+  const [travelMode, setTravelMode] = useState(initialTravelMode);
+  const [busy, setBusy] = useState<TravelMode | null>(null);
+
+  async function pick(mode: TravelMode) {
+    if (mode === travelMode) return;
+    setBusy(mode);
+    try {
+      await updateMyProfile(accessToken, { travelMode: mode });
+      setTravelMode(mode);
+      onSaved(mode);
+    } catch {
+      // Best-effort preference save — a failure here just means the picker
+      // doesn't visibly update; nothing else on this screen depends on it.
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <View style={{ marginTop: Spacing.four }}>
+      <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>
+        Your environmental impact
+      </Text>
+
+      <View
+        style={[
+          styles.card,
+          { backgroundColor: theme.backgroundElement, borderColor: theme.border },
+        ]}
+      >
+        <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.two }}>
+          <View
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: resolvedScheme === "dark" ? "#052e1f" : "#d1fae5",
+            }}
+          >
+            <Ionicons name="leaf-outline" size={18} color="#059669" />
+          </View>
+          <View>
+            <Text style={{ fontFamily: BrandFonts.headingSemiBold, color: theme.text, fontWeight: "800", fontSize: 17 }}>
+              {impact.totalKg.toFixed(1)} kg CO2 saved
+            </Text>
+            <Text style={{ color: theme.textSecondary, fontSize: 12 }}>
+              Across {impact.tripCount} {impact.tripCount === 1 ? "trip" : "trips"} by bus
+            </Text>
+          </View>
+        </View>
+
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+
+        <Text style={[styles.fieldLabel, { color: theme.textSecondary, marginBottom: Spacing.two }]}>
+          Your usual alternative — prefills this choice at checkout, you can still change it per trip
+        </Text>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: Spacing.two }}>
+          {TRAVEL_MODE_OPTIONS.map((opt) => {
+            const active = travelMode === opt.value;
+            return (
+              <Pressable
+                key={opt.value}
+                disabled={busy !== null}
+                onPress={() => pick(opt.value)}
+                style={[
+                  styles.segment,
+                  {
+                    borderColor: active ? theme.brand : theme.border,
+                    backgroundColor: active ? theme.brandSoft : "transparent",
+                    opacity: busy !== null && !active ? 0.6 : 1,
+                  },
+                ]}
+              >
+                <Image
+                  source={TRAVEL_MODE_ICONS[opt.value][resolvedScheme]}
+                  style={{ width: 15, height: 15 }}
+                  resizeMode="contain"
+                />
+                <Text style={{ color: active ? theme.brand : theme.text, fontWeight: "600", fontSize: 12 }}>
+                  {opt.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
     </View>
   );
 }

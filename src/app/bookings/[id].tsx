@@ -174,6 +174,19 @@ export default function TicketScreen() {
           </View>
         </View>
 
+        {confirmed && Number(booking.co2_saved_kg) > 0 && (
+          <View style={[styles.co2Banner, { backgroundColor: "#ecfdf5", borderColor: "#a7f3d0" }]}>
+            <Ionicons name="leaf-outline" size={18} color="#059669" />
+            <Text style={{ color: "#065f46", fontSize: 13, flex: 1 }}>
+              This trip saves ~
+              <Text style={{ fontFamily: BrandFonts.uiSemiBold, fontWeight: "700" }}>
+                {Number(booking.co2_saved_kg).toFixed(1)} kg
+              </Text>{" "}
+              of CO2 vs. your usual ride.
+            </Text>
+          </View>
+        )}
+
         <Pressable
           onPress={() => router.replace("/(tabs)/tickets")}
           style={[styles.ticketsButton, { borderColor: theme.brand }]}
@@ -249,4 +262,13 @@ const styles = StyleSheet.create({
     marginTop: Spacing.four,
   },
   ticketsButtonLabel: { fontFamily: BrandFonts.uiSemiBold, fontSize: 15, fontWeight: "700" },
+  co2Banner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.two,
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: Spacing.three,
+    marginTop: Spacing.three,
+  },
 });

@@ -197,6 +197,10 @@ export interface Booking {
   holds?: { expires_at: string }[];
   discount_amount?: number;
   offer?: { title: string; code: string } | null;
+  travel_mode: TravelMode | null;
+  /** Snapshotted at confirm_booking_paid() time — null until then, or if the
+   *  distance/route data needed to compute it wasn't available. */
+  co2_saved_kg: number | null;
 }
 
 export interface ApplyOfferResult {
@@ -334,9 +338,14 @@ export function releaseHold(accessToken: string, holdGroup: string) {
   return request(`/holds/${holdGroup}`, { method: "DELETE", accessToken });
 }
 
+/** If not by bus, how the passenger would have made THIS trip — asked at
+ *  checkout since the honest alternative varies trip to trip, not a fixed
+ *  profile setting. Powers the CO2-saved figure shown after payment. */
+export type TravelMode = "bike" | "three_wheeler" | "car" | "van";
+
 export function createBooking(
   accessToken: string,
-  body: { holdGroup: string; fromStopId: string; toStopId: string },
+  body: { holdGroup: string; fromStopId: string; toStopId: string; travelMode?: TravelMode },
 ) {
   return request<BookingResult>("/bookings", {
     method: "POST",
@@ -469,6 +478,9 @@ export interface MyProfile {
   email: string | null;
   avatar_url: string | null;
   lang: string;
+  /** Last choice made at checkout — a convenience default to prefill the
+   *  per-trip picker with, not itself used for any CO2 calculation. */
+  travel_mode: TravelMode | null;
   created_at: string | null;
 }
 
@@ -482,6 +494,7 @@ export interface UpdateMyProfileInput {
   email?: string;
   nic?: string;
   avatarUrl?: string;
+  travelMode?: TravelMode;
 }
 
 export function updateMyProfile(
@@ -493,6 +506,15 @@ export function updateMyProfile(
     body: JSON.stringify(input),
     accessToken,
   });
+}
+
+export interface Co2Impact {
+  totalKg: number;
+  tripCount: number;
+}
+
+export function getMyCo2Impact(accessToken: string) {
+  return request<Co2Impact>("/me/co2-impact", { accessToken });
 }
 
 export function deleteMyAccount(accessToken: string) {
