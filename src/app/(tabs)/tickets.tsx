@@ -9,7 +9,6 @@ import {
   View,
 } from "react-native";
 import { Text } from "@/components/ui/text";
-import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import QRCode from "react-native-qrcode-svg";
@@ -19,6 +18,7 @@ import { useAuth } from "@/lib/auth";
 import { listMyBookings, type MyBooking } from "@/lib/tickets";
 import { hideBooking, getMyReview, submitReview, ApiError } from "@/lib/api";
 import { Banner } from "@/components/banner";
+import { ThemedPngIcon } from "@/components/themed-png-icon";
 import { StarRatingInput } from "@/components/star-rating-input";
 import { Spacing, BottomTabInset, BrandFonts } from "@/constants/theme";
 
@@ -43,13 +43,6 @@ function dateTime(iso: string | null) {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-  });
-}
-function dateOnly(iso: string) {
-  return new Date(iso).toLocaleDateString("en-LK", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
   });
 }
 
@@ -341,7 +334,11 @@ function TicketCard({
           <Text style={[styles.routeName, { color: theme.text, flex: 1 }]}>
             {b.routeName ?? b.operatorName}
           </Text>
-          <Badge label={TAB_LABEL[t]} tone={t} />
+          {b.regNo && (
+            <View style={[styles.regNoChip, { borderColor: theme.border }]}>
+              <Text style={[styles.regNoChipText, { color: theme.textSecondary }]}>{b.regNo}</Text>
+            </View>
+          )}
         </View>
 
         {boarded && (
@@ -350,41 +347,19 @@ function TicketCard({
           </View>
         )}
 
-        {/* Highlighted — the one thing a passenger checks at a glance (when,
-         *  which bus), so it gets a distinct surface + bold text instead of
-         *  blending into the muted meta line around it. */}
-        <View
-          style={[
-            styles.highlightBox,
-            { backgroundColor: theme.background },
-          ]}
-        >
-          <View style={styles.highlightRow}>
-            <Ionicons name="calendar-outline" size={14} color={theme.text} />
-            <Text style={[styles.highlightText, { color: theme.text }]}>
-              {dateTime(b.departAt)}
-            </Text>
-          </View>
-          <View style={styles.highlightRow}>
-            {b.operatorLogo ? (
-              <Image source={{ uri: b.operatorLogo }} style={styles.operatorLogo} />
-            ) : (
-              <Ionicons name="bus-outline" size={14} color={theme.text} />
-            )}
-            <Text style={[styles.highlightText, { color: theme.text }]}>{b.operatorName}</Text>
-          </View>
-          {b.regNo && (
-            <View style={styles.highlightRow}>
-              <Ionicons name="bus-outline" size={14} color={theme.text} />
-              <Text style={[styles.highlightText, { color: theme.text }]}>{b.regNo}</Text>
-              {b.busClass && (
-                <View style={[styles.classChip, { backgroundColor: theme.backgroundElement }]}>
-                  <Text style={{ fontFamily: BrandFonts.uiSemiBold, color: theme.textSecondary, fontSize: 11, fontWeight: "700" }}>
-                    {BUS_CLASS_LABEL[b.busClass] ?? b.busClass.replace("_", " ")}
-                  </Text>
-                </View>
-              )}
-            </View>
+        {/* Same label+value language as the booking-details grid below —
+         *  keeps the whole card reading as one consistent design instead of
+         *  a separately-styled "highlight box". Generous top margin keeps
+         *  the route name reading as a clear heading, not crowded by it. */}
+        <View style={[styles.statsGrid, { marginTop: Spacing.four }]}>
+          <Stat label="Departs" value={dateTime(b.departAt)} theme={theme} />
+          <Stat label="Operator" value={b.operatorName} theme={theme} lines={2} />
+          {b.busClass && (
+            <Stat
+              label="Bus class"
+              value={BUS_CLASS_LABEL[b.busClass] ?? b.busClass.replace("_", " ")}
+              theme={theme}
+            />
           )}
         </View>
       </View>
@@ -420,7 +395,7 @@ function TicketCard({
             value={t === "confirmed" ? money(b.amount) : "-"}
             theme={theme}
           />
-          <Stat label="Booked on" value={dateOnly(b.createdAt)} theme={theme} />
+          <Stat label="Boarding point" value={b.fromStopName ?? "-"} theme={theme} />
           {t === "confirmed" && b.refundedAmount > 0 && (
             <Stat
               label="Refunded"
@@ -468,11 +443,7 @@ function TicketCard({
                       { borderColor: theme.brand },
                     ]}
                   >
-                    <Ionicons
-                      name="navigate-outline"
-                      size={14}
-                      color={theme.brand}
-                    />
+                    <ThemedPngIcon icon="liveTracking" size={14} color={theme.brand} />
                     <Text
                       style={{
                         fontFamily: BrandFonts.uiSemiBold,
@@ -678,10 +649,12 @@ function Stat({
   label,
   value,
   theme,
+  lines = 1,
 }: {
   label: string;
   value: string;
   theme: ReturnType<typeof useTheme>;
+  lines?: number;
 }) {
   return (
     <View style={styles.stat}>
@@ -704,7 +677,7 @@ function Stat({
           fontWeight: "700",
           marginTop: 2,
         }}
-        numberOfLines={1}
+        numberOfLines={lines}
       >
         {value}
       </Text>
@@ -776,20 +749,17 @@ const styles = StyleSheet.create({
   titleRow: { flexDirection: "row", alignItems: "center", gap: Spacing.two },
   routeName: {
     fontFamily: BrandFonts.headingSemiBold,
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "800",
-    letterSpacing: -0.2,
+    letterSpacing: -0.3,
   },
-  highlightBox: {
-    marginTop: Spacing.three,
-    borderRadius: 12,
-    padding: Spacing.two + 4,
-    gap: 6,
+  regNoChip: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
   },
-  highlightRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  highlightText: { fontFamily: BrandFonts.uiSemiBold, fontSize: 13, fontWeight: "700" },
-  operatorLogo: { width: 14, height: 14, borderRadius: 3 },
-  classChip: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, marginLeft: 2 },
+  regNoChipText: { fontFamily: BrandFonts.uiSemiBold, fontSize: 12, fontWeight: "700" },
   notchRow: { height: 20, flexDirection: "row", alignItems: "center" },
   notchCircle: {
     position: "absolute",

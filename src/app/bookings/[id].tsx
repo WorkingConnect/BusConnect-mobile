@@ -4,6 +4,7 @@ import { Text } from "@/components/ui/text";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import QRCode from "react-native-qrcode-svg";
+import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, router } from "expo-router";
 import { useTheme } from "@/hooks/use-theme";
 import { useAuth } from "@/lib/auth";
@@ -29,6 +30,7 @@ export default function TicketScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [booking, setBooking] = useState<Booking | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (!id || !session) return;
@@ -90,6 +92,12 @@ export default function TicketScreen() {
   const ticket = booking.tickets?.[0];
   const confirmed = booking.status === "confirmed";
 
+  async function copyBookingId() {
+    await Clipboard.setStringAsync(booking!.id);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
   function Cell({
     label,
     value,
@@ -125,13 +133,37 @@ export default function TicketScreen() {
       <ScrollView contentContainerStyle={styles.container}>
         <View style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
           <View style={styles.qrSection}>
-            <Text style={[styles.status, { color: confirmed ? "#16a34a" : "#c17a1f" }]}>
-              {confirmed ? "Confirmed" : booking.status === "pending" ? "Payment pending…" : booking.status}
-            </Text>
+            <View style={styles.statusRow}>
+              <View
+                style={[
+                  styles.statusPill,
+                  { backgroundColor: confirmed ? "#dcfce7" : "#fef3c7" },
+                ]}
+              >
+                {confirmed && <Ionicons name="checkmark-circle" size={12} color="#15803d" />}
+                <Text style={[styles.statusPillText, { color: confirmed ? "#15803d" : "#b45309" }]}>
+                  {confirmed ? "Confirmed" : booking.status === "pending" ? "Payment pending…" : booking.status}
+                </Text>
+              </View>
+            </View>
 
             {confirmed && ticket?.qr_signature ? (
               <View style={styles.qrWrap}>
                 <QRCode value={ticket.qr_signature} size={200} />
+                <Text style={[styles.qrCaption, { color: theme.textSecondary }]}>
+                  Show this QR to the conductor
+                </Text>
+                <View style={styles.bookingIdBlock}>
+                  <Text style={[styles.bookingIdText, { color: theme.textSecondary }]}>
+                    Booking ID: {booking.id}
+                  </Text>
+                  <Pressable onPress={copyBookingId} hitSlop={8} style={styles.copyButton}>
+                    <Ionicons name={copied ? "checkmark" : "copy-outline"} size={11} color={theme.brand} />
+                    <Text style={[styles.copyButtonText, { color: theme.brand }]}>
+                      {copied ? "Copied" : "Copy"}
+                    </Text>
+                  </Pressable>
+                </View>
               </View>
             ) : booking.status === "pending" ? (
               <View style={styles.qrWrap}>
@@ -189,10 +221,10 @@ export default function TicketScreen() {
 
         <Pressable
           onPress={() => router.replace("/(tabs)/tickets")}
-          style={[styles.ticketsButton, { borderColor: theme.brand }]}
+          style={[styles.ticketsButton, { backgroundColor: theme.brand }]}
         >
-          <Ionicons name="ticket-outline" size={18} color={theme.brand} />
-          <Text style={[styles.ticketsButtonLabel, { color: theme.brand }]}>Go to my tickets</Text>
+          <Ionicons name="ticket-outline" size={15} color="#fff" />
+          <Text style={styles.ticketsButtonLabel}>Go to my tickets</Text>
         </Pressable>
       </ScrollView>
     </View>
@@ -222,14 +254,27 @@ const styles = StyleSheet.create({
   },
   card: { borderWidth: 1, borderRadius: 20, overflow: "hidden" },
   qrSection: { padding: Spacing.four, paddingBottom: Spacing.three },
-  status: {
-    fontFamily: BrandFonts.headingSemiBold,
-    fontSize: 16,
-    fontWeight: "800",
-    textAlign: "center",
-    marginBottom: Spacing.three,
+  statusRow: { alignItems: "center", marginBottom: Spacing.three },
+  statusPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  statusPillText: {
+    fontFamily: BrandFonts.uiSemiBold,
+    fontSize: 12,
+    fontWeight: "700",
+    textTransform: "capitalize",
   },
   qrWrap: { alignItems: "center", justifyContent: "center", paddingVertical: Spacing.two },
+  qrCaption: { fontFamily: BrandFonts.uiRegular, fontSize: 12, marginTop: Spacing.three },
+  bookingIdBlock: { alignItems: "center", gap: 4, marginTop: 6 },
+  bookingIdText: { fontFamily: BrandFonts.uiRegular, fontSize: 11 },
+  copyButton: { flexDirection: "row", alignItems: "center", gap: 3 },
+  copyButtonText: { fontFamily: BrandFonts.uiSemiBold, fontSize: 11, fontWeight: "600" },
   perforationRow: { flexDirection: "row", alignItems: "center", height: NOTCH_SIZE },
   notch: {
     width: NOTCH_SIZE,
@@ -255,13 +300,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: Spacing.two,
-    borderWidth: 1.5,
-    borderRadius: 14,
-    paddingVertical: Spacing.three,
+    gap: 6,
+    borderRadius: 10,
+    paddingVertical: 9,
     marginTop: Spacing.four,
   },
-  ticketsButtonLabel: { fontFamily: BrandFonts.uiSemiBold, fontSize: 15, fontWeight: "700" },
+  ticketsButtonLabel: { fontFamily: BrandFonts.uiSemiBold, fontSize: 13, fontWeight: "700", color: "#fff" },
   co2Banner: {
     flexDirection: "row",
     alignItems: "center",

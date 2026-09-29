@@ -1,7 +1,9 @@
 import { Tabs } from "expo-router";
+import type { ColorValue } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/hooks/use-theme";
+import { ThemedPngIcon } from "@/components/themed-png-icon";
 import { TabBarBaseHeight } from "@/constants/theme";
 
 /** No blanket auth gate here — Home and Hire are browsable without an
@@ -42,15 +44,15 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: "Home",
-          tabBarIcon: ({ color, focused, size }) => (
-            <Ionicons name={focused ? "home" : "home-outline"} color={color} size={size} />
-          ),
+          tabBarIcon: ({ color, size }) => <ThemedPngIcon icon="search" size={size} color={color as string} />,
         }}
       />
       <Tabs.Screen
         name="tickets"
         options={{
           title: "My Tickets",
+          // The web "ticket" PNG is only 24x24 — too low-res for a retina
+          // tab bar (renders blurry). Ionicons stays crisp at any scale.
           tabBarIcon: ({ color, focused, size }) => (
             <Ionicons name={focused ? "ticket" : "ticket-outline"} color={color} size={size} />
           ),
@@ -60,9 +62,7 @@ export default function TabsLayout() {
         name="hire"
         options={{
           title: "Hire",
-          tabBarIcon: ({ color, focused, size }) => (
-            <Ionicons name={focused ? "bus" : "bus-outline"} color={color} size={size} />
-          ),
+          tabBarIcon: ({ color, size }) => <ThemedPngIcon icon="bus" size={size} color={color as string} />,
         }}
       />
       <Tabs.Screen

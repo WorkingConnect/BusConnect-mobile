@@ -11,6 +11,7 @@ export interface MyBooking {
   id: string;
   tripId: string;
   fromStopId: string;
+  fromStopName: string | null;
   code: string;
   seats: string[];
   amount: number;
@@ -35,6 +36,7 @@ interface BookingRow {
   id: string;
   trip_id: string;
   from_stop_id: string;
+  from_stop: { location: { name_en: string } | null } | null;
   seats: string[];
   amount: number;
   refunded_seats: string[];
@@ -63,6 +65,7 @@ export async function listMyBookings(): Promise<MyBooking[]> {
     .from("bookings")
     .select(
       `id, trip_id, from_stop_id, seats, amount, refunded_seats, refunded_amount, status, created_at,
+       from_stop:route_stops!bookings_from_stop_id_fkey ( location:locations ( name_en ) ),
        trip:trips ( depart_at, status, location_sharing,
          route:routes ( name ),
          bus:buses ( reg_no, bus_type:bus_types ( name, class ),
@@ -85,6 +88,7 @@ export async function listMyBookings(): Promise<MyBooking[]> {
       id: b.id,
       tripId: b.trip_id,
       fromStopId: b.from_stop_id,
+      fromStopName: b.from_stop?.location?.name_en ?? null,
       code: b.id.slice(0, 6).toUpperCase(),
       seats: b.seats,
       amount: Number(b.amount),
