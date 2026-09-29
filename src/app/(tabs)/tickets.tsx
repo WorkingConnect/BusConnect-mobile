@@ -9,6 +9,7 @@ import {
   View,
 } from "react-native";
 import { Text } from "@/components/ui/text";
+import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import QRCode from "react-native-qrcode-svg";
@@ -57,6 +58,15 @@ const TAB_LABEL: Record<Tab, string> = {
   cancelled: "Cancelled",
 };
 const TABS: Tab[] = ["confirmed", "cancelled"];
+
+// Same canonical labels as BusConnect-web's src/lib/bus-constants.ts.
+const BUS_CLASS_LABEL: Record<string, string> = {
+  normal: "Normal",
+  semi_luxury: "Semi Luxury",
+  luxury: "Luxury",
+  super_luxury: "Super Luxury",
+  expressway: "Expressway",
+};
 
 export default function TicketsScreen() {
   const theme = useTheme();
@@ -327,24 +337,56 @@ function TicketCard({
       ]}
     >
       <View style={styles.cardTop}>
-        <View style={styles.badgeRow}>
+        <View style={styles.titleRow}>
+          <Text style={[styles.routeName, { color: theme.text, flex: 1 }]}>
+            {b.routeName ?? b.operatorName}
+          </Text>
           <Badge label={TAB_LABEL[t]} tone={t} />
-          {b.busClass && (
-            <Badge label={b.busClass.replace("_", " ")} tone="class" />
-          )}
-          {boarded && <Badge label="Boarded" tone="confirmed" />}
         </View>
 
-        <Text style={[styles.routeName, { color: theme.text }]}>
-          {b.routeName ?? b.operatorName}
-        </Text>
-        <Text
-          style={[styles.routeMeta, { color: theme.textSecondary }]}
-          numberOfLines={2}
+        {boarded && (
+          <View style={{ marginTop: Spacing.one, alignSelf: "flex-start" }}>
+            <Badge label="Boarded" tone="confirmed" />
+          </View>
+        )}
+
+        {/* Highlighted — the one thing a passenger checks at a glance (when,
+         *  which bus), so it gets a distinct surface + bold text instead of
+         *  blending into the muted meta line around it. */}
+        <View
+          style={[
+            styles.highlightBox,
+            { backgroundColor: theme.background },
+          ]}
         >
-          {dateTime(b.departAt)} · {b.operatorName}
-          {b.regNo ? ` · ${b.regNo}` : ""}
-        </Text>
+          <View style={styles.highlightRow}>
+            <Ionicons name="calendar-outline" size={14} color={theme.text} />
+            <Text style={[styles.highlightText, { color: theme.text }]}>
+              {dateTime(b.departAt)}
+            </Text>
+          </View>
+          <View style={styles.highlightRow}>
+            {b.operatorLogo ? (
+              <Image source={{ uri: b.operatorLogo }} style={styles.operatorLogo} />
+            ) : (
+              <Ionicons name="bus-outline" size={14} color={theme.text} />
+            )}
+            <Text style={[styles.highlightText, { color: theme.text }]}>{b.operatorName}</Text>
+          </View>
+          {b.regNo && (
+            <View style={styles.highlightRow}>
+              <Ionicons name="bus-outline" size={14} color={theme.text} />
+              <Text style={[styles.highlightText, { color: theme.text }]}>{b.regNo}</Text>
+              {b.busClass && (
+                <View style={[styles.classChip, { backgroundColor: theme.backgroundElement }]}>
+                  <Text style={{ fontFamily: BrandFonts.uiSemiBold, color: theme.textSecondary, fontSize: 11, fontWeight: "700" }}>
+                    {BUS_CLASS_LABEL[b.busClass] ?? b.busClass.replace("_", " ")}
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+        </View>
       </View>
 
       <View style={styles.notchRow}>
@@ -609,11 +651,10 @@ function RateTripButton({
   );
 }
 
-function Badge({ label, tone }: { label: string; tone: Tab | "class" }) {
+function Badge({ label, tone }: { label: string; tone: Tab }) {
   const colors: Record<string, { bg: string; fg: string }> = {
     confirmed: { bg: "#d1fae5", fg: "#047857" },
     cancelled: { bg: "#e4e4e7", fg: "#52525b" },
-    class: { bg: "#e6eefb", fg: "#004aad" },
   };
   const c = colors[tone];
   return (
@@ -732,14 +773,23 @@ const styles = StyleSheet.create({
   cardBottom: { padding: Spacing.four, paddingTop: Spacing.three },
   badgeRow: { flexDirection: "row", gap: 6, flexWrap: "wrap" },
   badge: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 },
+  titleRow: { flexDirection: "row", alignItems: "center", gap: Spacing.two },
   routeName: {
     fontFamily: BrandFonts.headingSemiBold,
     fontSize: 16,
     fontWeight: "800",
-    marginTop: 10,
     letterSpacing: -0.2,
   },
-  routeMeta: { fontFamily: BrandFonts.uiRegular, fontSize: 13, marginTop: 3, lineHeight: 18 },
+  highlightBox: {
+    marginTop: Spacing.three,
+    borderRadius: 12,
+    padding: Spacing.two + 4,
+    gap: 6,
+  },
+  highlightRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  highlightText: { fontFamily: BrandFonts.uiSemiBold, fontSize: 13, fontWeight: "700" },
+  operatorLogo: { width: 14, height: 14, borderRadius: 3 },
+  classChip: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, marginLeft: 2 },
   notchRow: { height: 20, flexDirection: "row", alignItems: "center" },
   notchCircle: {
     position: "absolute",
