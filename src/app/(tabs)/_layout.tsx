@@ -1,5 +1,4 @@
 import { Tabs } from "expo-router";
-import type { ColorValue } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/hooks/use-theme";
@@ -55,6 +54,15 @@ export default function TabsLayout() {
           // tab bar (renders blurry). Ionicons stays crisp at any scale.
           tabBarIcon: ({ color, focused, size }) => (
             <Ionicons name={focused ? "ticket" : "ticket-outline"} color={color} size={size} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="my-qr"
+        options={{
+          title: "My QR",
+          tabBarIcon: ({ color, focused, size }) => (
+            <Ionicons name={focused ? "qr-code" : "qr-code-outline"} color={color} size={size} />
           ),
         }}
       />

@@ -84,7 +84,7 @@ export default function WalletScreen() {
       >
         <View style={styles.heroTopRow}>
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))}
             hitSlop={8}
             style={styles.backButton}
           >
@@ -241,7 +241,7 @@ function TransactionRow({
           <Text
             style={{ color: theme.text, fontWeight: "600", fontSize: 14 }}
           >
-            {TX_LABEL[item.type]}
+            {item.onboard_fare_id ? "Onboard fare" : TX_LABEL[item.type]}
           </Text>
           <Text
             style={{

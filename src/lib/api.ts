@@ -431,6 +431,7 @@ export interface WalletTransaction {
   status: "pending" | "completed" | "failed";
   amount: number;
   booking_id: string | null;
+  onboard_fare_id: string | null;
   created_at: string;
 }
 
@@ -468,6 +469,36 @@ export function payBookingFromWallet(accessToken: string, bookingId: string) {
       accessToken,
     },
   );
+}
+
+// ── Identity QR / onboard wallet fares ──────────────────────────────────────
+
+export interface IdentityQrToken {
+  token: string;
+  expiresAt: string;
+}
+
+/** Issues a fresh short-lived signed token for the passenger's personal QR
+ *  (onboard wallet-fare flow) — call every ~30s to keep the QR live, see
+ *  the My QR screen. */
+export function getIdentityQrToken(accessToken: string) {
+  return request<IdentityQrToken>("/identity/qr-token", {
+    method: "POST",
+    accessToken,
+  });
+}
+
+export interface OnboardFare {
+  id: string;
+  amount: number;
+  createdAt: string;
+  fromStopName: string | null;
+  toStopName: string | null;
+}
+
+/** This passenger's own onboard (city-bus) fare history. */
+export function getOnboardFareHistory(accessToken: string) {
+  return request<OnboardFare[]>("/onboard/mine", { accessToken });
 }
 
 export interface MyProfile {
